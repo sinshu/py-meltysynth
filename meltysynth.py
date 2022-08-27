@@ -1,7 +1,7 @@
 import array
-from enum import Enum
 import io
 import itertools
+from enum import Enum
 
 
 
@@ -38,7 +38,7 @@ class BinaryReaderEx:
 
         for i, value in enumerate(data):
             if not (32 <= value and value <= 126):
-                data[i] = 63 // '?'
+                data[i] = 63 # '?'
 
         return data.decode("ascii")
 
