@@ -2,7 +2,7 @@ import array
 import io
 import itertools
 import math
-from enum import Enum
+from enum import IntEnum
 
 
 
@@ -307,7 +307,7 @@ class SoundFontSampleData:
 
 
 
-class GeneratorType(Enum):
+class GeneratorType(IntEnum):
 
     START_ADDRESS_OFFSET = 0
     END_ADDRESS_OFFSET = 1
@@ -381,7 +381,7 @@ class Generator:
     def __init__(self, reader: io.BytesIO) -> None:
         
         self._generator_type = GeneratorType(BinaryReaderEx.read_uint16(reader))
-        self._value = BinaryReaderEx.read_uint16(reader)
+        self._value = BinaryReaderEx.read_int16(reader)
 
     @staticmethod
     def read_from_chunk(reader: io.BytesIO, size: int) -> list:
@@ -422,7 +422,7 @@ class Modulator:
 
 
 
-class SampleType(Enum):
+class SampleType(IntEnum):
 
     MONO = 1
     RIGHT = 2
@@ -727,11 +727,47 @@ class InstrumentInfo:
 
 class Instrument:
 
-    name: str
+    _name: str
+    _regions: list
+
+    def __init__(self, info: InstrumentInfo, zones: list, samples: list) -> None:
+        
+        self._name = info.name
+
+        zone_count = info.zone_end_index - info.zone_start_index + 1
+        if zone_count <= 0:
+            raise Exception("The instrument '" + info.name + "' has no zone.")
+        
+        zone_span = zones[info.zone_start_index:info.zone_start_index + zone_count]
+
+        self._regions = InstrumentRegion.create(self, zone_span, samples)
+
+    @staticmethod
+    def create(infos: list, zones: list, samples: list):
+
+        if len(infos) <= 1:
+            raise Exception("No valid instrument was found.")
+        
+        # The last one is the terminator.
+        count = len(infos) - 1
+        instruments = list()
+
+        for i in range(count):
+            instruments.append(Instrument(infos[i], zones, samples))
+        
+        return instruments
+
+    @property
+    def name(self) -> str:
+        return self._name
+    
+    @property
+    def regions(self) -> list:
+        return self._regions
 
 
 
-class LoopMode(Enum):
+class LoopMode(IntEnum):
 
     NO_LOOP = 0
     CONTINUOUS = 1
@@ -746,26 +782,26 @@ class InstrumentRegion:
 
     def __init__(self, instrument: Instrument, global_generators: list, local_generators: list, samples: list) -> None:
         
-        _gs = array.array("h", itertools.repeat(0, 64))
-        _gs[GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY] = 13500
-        _gs[GeneratorType.DELAY_MODULATION_LFO] = -12000
-        _gs[GeneratorType.DELAY_VIBRATO_LFO] = -12000
-        _gs[GeneratorType.DELAY_MODULATION_ENVELOPE] = -12000
-        _gs[GeneratorType.ATTACK_MODULATION_ENVELOPE] = -12000
-        _gs[GeneratorType.HOLD_MODULATION_ENVELOPE] = -12000
-        _gs[GeneratorType.DECAY_MODULATION_ENVELOPE] = -12000
-        _gs[GeneratorType.RELEASE_MODULATION_ENVELOPE] = -12000
-        _gs[GeneratorType.DELAY_VOLUME_ENVELOPE] = -12000
-        _gs[GeneratorType.ATTACK_VOLUME_ENVELOPE] = -12000
-        _gs[GeneratorType.HOLD_VOLUME_ENVELOPE] = -12000
-        _gs[GeneratorType.DECAY_VOLUME_ENVELOPE] = -12000
-        _gs[GeneratorType.RELEASE_VOLUME_ENVELOPE] = -12000
-        _gs[GeneratorType.KEY_RANGE] = 0x7F00
-        _gs[GeneratorType.VELOCITY_RANGE] = 0x7F00
-        _gs[GeneratorType.KEY_NUMBER] = -1
-        _gs[GeneratorType.VELOCITY] = -1
-        _gs[GeneratorType.SCALE_TUNING] = 100
-        _gs[GeneratorType.OVERRIDING_ROOT_KEY] = -1
+        self._gs = array.array("h", itertools.repeat(0, 64))
+        self._gs[GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY] = 13500
+        self._gs[GeneratorType.DELAY_MODULATION_LFO] = -12000
+        self._gs[GeneratorType.DELAY_VIBRATO_LFO] = -12000
+        self._gs[GeneratorType.DELAY_MODULATION_ENVELOPE] = -12000
+        self._gs[GeneratorType.ATTACK_MODULATION_ENVELOPE] = -12000
+        self._gs[GeneratorType.HOLD_MODULATION_ENVELOPE] = -12000
+        self._gs[GeneratorType.DECAY_MODULATION_ENVELOPE] = -12000
+        self._gs[GeneratorType.RELEASE_MODULATION_ENVELOPE] = -12000
+        self._gs[GeneratorType.DELAY_VOLUME_ENVELOPE] = -12000
+        self._gs[GeneratorType.ATTACK_VOLUME_ENVELOPE] = -12000
+        self._gs[GeneratorType.HOLD_VOLUME_ENVELOPE] = -12000
+        self._gs[GeneratorType.DECAY_VOLUME_ENVELOPE] = -12000
+        self._gs[GeneratorType.RELEASE_VOLUME_ENVELOPE] = -12000
+        self._gs[GeneratorType.KEY_RANGE] = 0x7F00
+        self._gs[GeneratorType.VELOCITY_RANGE] = 0x7F00
+        self._gs[GeneratorType.KEY_NUMBER] = -1
+        self._gs[GeneratorType.VELOCITY] = -1
+        self._gs[GeneratorType.SCALE_TUNING] = 100
+        self._gs[GeneratorType.OVERRIDING_ROOT_KEY] = -1
 
         if global_generators != None:
             for parameter in global_generators:
@@ -775,8 +811,8 @@ class InstrumentRegion:
             for parameter in local_generators:
                 self.set_parameter(parameter)
         
-        id = _gs[GeneratorType.SAMPLE_ID]
-        if not (0 <= id and id < samples.Length):
+        id = self._gs[GeneratorType.SAMPLE_ID]
+        if not (0 <= id and id < len(samples)):
             raise Exception("The instrument '" + instrument.name + "' contains an invalid sample ID '" + id + "'.")
         self._sample = samples[id]
     
@@ -786,7 +822,7 @@ class InstrumentRegion:
         global_zone: Zone = None
 
         # Is the first one the global zone?
-        if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != GeneratorType.SampleID:
+        if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != GeneratorType.SAMPLE_ID:
             # The first one is the global zone.
             global_zone = zones[0]
         
@@ -1105,6 +1141,11 @@ class SoundFontParameters:
         
         if sample_headers == None:
             raise Exception("The SHDR sub-chunk was not found.")
+        
+        instrument_zones = Zone.create(instrument_bag, instrument_generators)
+        self._instruments = Instrument.create(instrument_infos, instrument_zones, sample_headers)
+
+        print("ok")
 
 
 
