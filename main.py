@@ -7,6 +7,6 @@ import meltysynth as ms
 
 file = open("TimGM6mb.sf2", "rb")
 
-a = ms.SoundFont(file)
+sf2 = ms.SoundFont(file)
 
-print(len(a.aaaa.samples))
+print("ok")
