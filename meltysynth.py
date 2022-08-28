@@ -1121,6 +1121,10 @@ class Preset:
     @property
     def morphology(self) -> int:
         return self._morphology
+    
+    @property
+    def regions(self) -> list:
+        return self._regions
 
 
 
@@ -1133,7 +1137,7 @@ class PresetRegion:
         
         self._gs = array.array("h", itertools.repeat(0, 61))
         self._gs[GeneratorType.KEY_RANGE] = 0x7F00
-        self._gs[GeneratorType.VELOCITY_RANGE] = -0x7F00
+        self._gs[GeneratorType.VELOCITY_RANGE] = 0x7F00
 
         if global_generators != None:
             for parameter in global_generators:

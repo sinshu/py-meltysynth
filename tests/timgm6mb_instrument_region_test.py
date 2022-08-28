@@ -7,7 +7,7 @@ from tests.region_utils import RegionUtils
 
 
 
-class TestInstrumenrRegion(unittest.TestCase):
+class TestInstrumentRegion(unittest.TestCase):
 
     def test_instrument_region(self):
 
