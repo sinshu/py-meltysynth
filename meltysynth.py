@@ -3,7 +3,6 @@ import enum
 import io
 import itertools
 import math
-from types import GeneratorType
 
 
 
@@ -1517,7 +1516,7 @@ class _RegionPair:
         self._preset = preset
         self._instrument = instrument
     
-    def _get_value(self, generator_type: GeneratorType) -> int:
+    def _get_value(self, generator_type: _GeneratorType) -> int:
         return self._preset._gs[generator_type] + self._instrument._gs[generator_type]
     
     @property
