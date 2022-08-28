@@ -28,6 +28,18 @@ class TestTimGM6mb(unittest.TestCase):
         self.assertEqual(info.comments, "")
         self.assertEqual(info.tools, "Awave Studio v8.5")
 
+    def test_sample_data(self):
+
+        file = io.open("TimGM6mb.sf2", "rb")
+        sf2 = ms.SoundFont(file)
+        file.close()
+
+        sum = 0
+        for value in sf2.wave_data:
+            sum += value
+        
+        self.assertEqual(sum, 713099516)
+
 
 
 class TestGeneralUserGsMuseScore(unittest.TestCase):
@@ -52,3 +64,15 @@ class TestGeneralUserGsMuseScore(unittest.TestCase):
         self.assertEqual(info.copyright, "2012 by S. Christian Collins")
         self.assertEqual(len(info.comments), 2207)
         self.assertEqual(info.tools, ":SFEDT v1.10:SFEDT v1.36:")
+    
+    def test_sample_data(self):
+
+        file = io.open("GeneralUser GS MuseScore v1.442.sf2", "rb")
+        sf2 = ms.SoundFont(file)
+        file.close()
+
+        sum = 0
+        for value in sf2.wave_data:
+            sum += value
+        
+        self.assertEqual(sum, 101035585)
