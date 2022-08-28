@@ -60,10 +60,8 @@ class _BinaryReaderEx:
     def read_int16_array(reader: io.BytesIO, size: int) -> array.array:
 
         count = int(size / 2)
-        result = array.array("h", itertools.repeat(0, count))
-
-        for i in range(count):
-            result[i] = _BinaryReaderEx.read_int16(reader)
+        result = array.array("h")
+        result.fromfile(reader, count)
         
         return result
 
