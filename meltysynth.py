@@ -460,7 +460,7 @@ class SampleHeader:
         self._sample_type = _BinaryReaderEx.read_uint16(reader)
     
     @staticmethod
-    def read_from_chunk(reader: io.BytesIO, size: int) -> list:
+    def _read_from_chunk(reader: io.BytesIO, size: int) -> list:
 
         if int(size % 46) != 0:
             raise Exception("The sample header list is invalid.")
@@ -738,10 +738,10 @@ class Instrument:
         
         zone_span = zones[info.zone_start_index:info.zone_start_index + zone_count]
 
-        self._regions = InstrumentRegion.create(self, zone_span, samples)
+        self._regions = InstrumentRegion._create(self, zone_span, samples)
 
     @staticmethod
-    def create(infos: list, zones: list, samples: list):
+    def _create(infos: list, zones: list, samples: list):
 
         if len(infos) <= 1:
             raise Exception("No valid instrument was found.")
@@ -803,11 +803,11 @@ class InstrumentRegion:
 
         if global_generators != None:
             for parameter in global_generators:
-                self.set_parameter(parameter)
+                self._set_parameter(parameter)
         
         if local_generators != None:
             for parameter in local_generators:
-                self.set_parameter(parameter)
+                self._set_parameter(parameter)
         
         id = self._gs[_GeneratorType.SAMPLE_ID]
         if not (0 <= id and id < len(samples)):
@@ -815,7 +815,7 @@ class InstrumentRegion:
         self._sample = samples[id]
     
     @staticmethod
-    def create(instrument: Instrument, zones: list, samples: list) -> list:
+    def _create(instrument: Instrument, zones: list, samples: list) -> list:
 
         global_zone: _Zone = None
 
@@ -839,7 +839,7 @@ class InstrumentRegion:
                 regions.append(InstrumentRegion(instrument, None, zones[i].generators, samples))
             return regions
 
-    def set_parameter(self, parameter: _Generator) -> None:
+    def _set_parameter(self, parameter: _Generator) -> None:
 
         index = int(parameter.generator_type)
 
@@ -1079,10 +1079,10 @@ class Preset:
         
         zone_span = zones[info.zone_start_index:info.zone_start_index + zone_count]
 
-        self._regions = PresetRegion.create(self, zone_span, instruments)
+        self._regions = PresetRegion._create(self, zone_span, instruments)
 
     @staticmethod
-    def create(infos: list, zones: list, instruments: list) -> list:
+    def _create(infos: list, zones: list, instruments: list) -> list:
 
         if len(infos) <= 1:
             raise Exception("No valid preset was found.")
@@ -1139,11 +1139,11 @@ class PresetRegion:
 
         if global_generators != None:
             for parameter in global_generators:
-                self.set_parameter(parameter)
+                self._set_parameter(parameter)
         
         if local_generators != None:
             for parameter in local_generators:
-                self.set_parameter(parameter)
+                self._set_parameter(parameter)
         
         id = self._gs[_GeneratorType.INSTRUMENT]
         if not (0 <= id and id < len(instruments)):
@@ -1151,7 +1151,7 @@ class PresetRegion:
         self._instrument = instruments[id]
     
     @staticmethod
-    def create(preset: Preset, zones: list, instruments: list) -> list:
+    def _create(preset: Preset, zones: list, instruments: list) -> list:
 
         global_zone: _Zone = None
 
@@ -1175,7 +1175,7 @@ class PresetRegion:
                 regions.append(PresetRegion(preset, None, zones[i].generators, instruments))
             return regions
 
-    def set_parameter(self, parameter: _Generator) -> None:
+    def _set_parameter(self, parameter: _Generator) -> None:
 
         index = int(parameter.generator_type)
 
@@ -1404,7 +1404,7 @@ class _SoundFontParameters:
                     instrument_generators = _Generator.read_from_chunk(reader, size)
 
                 case "shdr":
-                    sample_headers = SampleHeader.read_from_chunk(reader, size)
+                    sample_headers = SampleHeader._read_from_chunk(reader, size)
 
                 case _:
                     raise Exception("The INFO list contains an unknown ID '" + id + "'.")
@@ -1433,10 +1433,10 @@ class _SoundFontParameters:
         self._sample_headers = sample_headers
         
         instrument_zones = _Zone.create(instrument_bag, instrument_generators)
-        self._instruments = Instrument.create(instrument_infos, instrument_zones, sample_headers)
+        self._instruments = Instrument._create(instrument_infos, instrument_zones, sample_headers)
 
         preset_zones = _Zone.create(preset_bag, preset_generators)
-        self._presets = Preset.create(preset_infos, preset_zones, self._instruments)
+        self._presets = Preset._create(preset_infos, preset_zones, self._instruments)
 
     @property
     def sample_headers(self) -> list:
