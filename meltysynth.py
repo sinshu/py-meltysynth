@@ -6,7 +6,7 @@ from enum import IntEnum
 
 
 
-class BinaryReaderEx:
+class _BinaryReaderEx:
 
     @staticmethod
     def read_int32(reader: io.BytesIO) -> int:
@@ -63,13 +63,13 @@ class BinaryReaderEx:
         result = array.array("h", itertools.repeat(0, count))
 
         for i in range(count):
-            result[i] = BinaryReaderEx.read_int16(reader)
+            result[i] = _BinaryReaderEx.read_int16(reader)
         
         return result
 
 
 
-class SoundFontMath:
+class _SoundFontMath:
 
     @staticmethod
     def half_pi() -> float:
@@ -105,11 +105,11 @@ class SoundFontMath:
     
     @staticmethod
     def key_number_to_multiplying_factor(cents: int, key: int) -> float:
-        return SoundFontMath.timecents_to_seconds(cents * (60 - key))
+        return _SoundFontMath.timecents_to_seconds(cents * (60 - key))
     
     @staticmethod
     def exp_cutoff(x: float) -> float:
-        if x < SoundFontMath.log_non_audible():
+        if x < _SoundFontMath.log_non_audible():
             return 0.0
         else:
             return math.exp(x)
@@ -161,55 +161,55 @@ class SoundFontInfo:
 
     def __init__(self, reader: io.BytesIO) -> None:
 
-        chunk_id = BinaryReaderEx.read_four_cc(reader)
+        chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
 
-        end = reader.tell() + BinaryReaderEx.read_uint32(reader)
+        end = reader.tell() + _BinaryReaderEx.read_uint32(reader)
 
-        list_type = BinaryReaderEx.read_four_cc(reader)
+        list_type = _BinaryReaderEx.read_four_cc(reader)
         if list_type != "INFO":
             raise Exception("The type of the LIST chunk must be 'INFO', but was '" + list_type + "'.")
         
         while reader.tell() < end:
 
-            id = BinaryReaderEx.read_four_cc(reader)
-            size = BinaryReaderEx.read_uint32(reader)
+            id = _BinaryReaderEx.read_four_cc(reader)
+            size = _BinaryReaderEx.read_uint32(reader)
 
             match id:
 
                 case "ifil":
-                    self._version = SoundFontVersion(BinaryReaderEx.read_uint16(reader), BinaryReaderEx.read_uint16(reader))
+                    self._version = SoundFontVersion(_BinaryReaderEx.read_uint16(reader), _BinaryReaderEx.read_uint16(reader))
 
                 case "isng":
-                    self._target_sound_engine = BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._target_sound_engine = _BinaryReaderEx.read_fixed_length_string(reader, size)
 
                 case "INAM":
-                    self._bank_name = BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._bank_name = _BinaryReaderEx.read_fixed_length_string(reader, size)
 
                 case "irom":
-                    self._rom_name = BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._rom_name = _BinaryReaderEx.read_fixed_length_string(reader, size)
 
                 case "iver":
-                    self._rom_version = SoundFontVersion(BinaryReaderEx.read_uint16(reader), BinaryReaderEx.read_uint16(reader))
+                    self._rom_version = SoundFontVersion(_BinaryReaderEx.read_uint16(reader), _BinaryReaderEx.read_uint16(reader))
 
                 case "ICRD":
-                    self._creation_date = BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._creation_date = _BinaryReaderEx.read_fixed_length_string(reader, size)
 
                 case "IENG":
-                    self._author = BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._author = _BinaryReaderEx.read_fixed_length_string(reader, size)
 
                 case "IPRD":
-                    self._target_product = BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._target_product = _BinaryReaderEx.read_fixed_length_string(reader, size)
 
                 case "ICOP":
-                    self._copyright = BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._copyright = _BinaryReaderEx.read_fixed_length_string(reader, size)
 
                 case "ICMT":
-                    self._comments = BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._comments = _BinaryReaderEx.read_fixed_length_string(reader, size)
 
                 case "ISFT":
-                    self._tools = BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._tools = _BinaryReaderEx.read_fixed_length_string(reader, size)
 
                 case _:
                     raise Exception("The INFO list contains an unknown ID '" + id + "'.")
@@ -260,33 +260,33 @@ class SoundFontInfo:
 
 
 
-class SoundFontSampleData:
+class _SoundFontSampleData:
 
     _bits_per_sample: int
     _samples: array.array
 
     def __init__(self, reader: io.BytesIO) -> None:
         
-        chunk_id = BinaryReaderEx.read_four_cc(reader)
+        chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
         
-        end = reader.tell() + BinaryReaderEx.read_uint32(reader)
+        end = reader.tell() + _BinaryReaderEx.read_uint32(reader)
 
-        list_type = BinaryReaderEx.read_four_cc(reader)
+        list_type = _BinaryReaderEx.read_four_cc(reader)
         if list_type != "sdta":
             raise Exception("The type of the LIST chunk must be 'sdta', but was '" + list_type + "'.")
         
         while reader.tell() < end:
 
-            id = BinaryReaderEx.read_four_cc(reader)
-            size = BinaryReaderEx.read_uint32(reader)
+            id = _BinaryReaderEx.read_four_cc(reader)
+            size = _BinaryReaderEx.read_uint32(reader)
 
             match id:
 
                 case "smpl":
                     self._bits_per_sample = 16
-                    self._samples = BinaryReaderEx.read_int16_array(reader, size)
+                    self._samples = _BinaryReaderEx.read_int16_array(reader, size)
 
                 case "sm24":
                     reader.seek(size, io.SEEK_CUR)
@@ -307,7 +307,7 @@ class SoundFontSampleData:
 
 
 
-class GeneratorType(IntEnum):
+class _GeneratorType(IntEnum):
 
     START_ADDRESS_OFFSET = 0
     END_ADDRESS_OFFSET = 1
@@ -373,15 +373,15 @@ class GeneratorType(IntEnum):
 
 
 
-class Generator:
+class _Generator:
 
-    _generator_type: GeneratorType
+    _generator_type: _GeneratorType
     _value: int
 
     def __init__(self, reader: io.BytesIO) -> None:
         
-        self._generator_type = GeneratorType(BinaryReaderEx.read_uint16(reader))
-        self._value = BinaryReaderEx.read_int16(reader)
+        self._generator_type = _GeneratorType(_BinaryReaderEx.read_uint16(reader))
+        self._value = _BinaryReaderEx.read_int16(reader)
 
     @staticmethod
     def read_from_chunk(reader: io.BytesIO, size: int) -> list:
@@ -393,10 +393,10 @@ class Generator:
         generators = list()
 
         for i in range(count):
-            generators.append(Generator(reader))
+            generators.append(_Generator(reader))
 
         # The last one is the terminator.
-        Generator(reader)
+        _Generator(reader)
 
         return generators
     
@@ -410,7 +410,7 @@ class Generator:
 
 
 
-class Modulator:
+class _Modulator:
 
     @staticmethod
     def discard_data(reader: io.BytesIO, size: int) -> None:
@@ -422,7 +422,7 @@ class Modulator:
 
 
 
-class SampleType(IntEnum):
+class _SampleType(IntEnum):
 
     MONO = 1
     RIGHT = 2
@@ -446,20 +446,20 @@ class SampleHeader:
     _original_pitch: int
     _pitch_correction: int
     _link: int
-    _sample_type: SampleType
+    _sample_type: _SampleType
 
     def __init__(self, reader: io.BytesIO) -> None:
         
-        self._name = BinaryReaderEx.read_fixed_length_string(reader, 20)
-        self._start = BinaryReaderEx.read_int32(reader)
-        self._end = BinaryReaderEx.read_int32(reader)
-        self._start_loop = BinaryReaderEx.read_int32(reader)
-        self._end_loop = BinaryReaderEx.read_int32(reader)
-        self._sample_rate = BinaryReaderEx.read_int32(reader)
-        self._original_pitch = BinaryReaderEx.read_uint8(reader)
-        self._pitch_correction = BinaryReaderEx.read_int8(reader)
-        self._link = BinaryReaderEx.read_uint16(reader)
-        self._sample_type = BinaryReaderEx.read_uint16(reader)
+        self._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
+        self._start = _BinaryReaderEx.read_int32(reader)
+        self._end = _BinaryReaderEx.read_int32(reader)
+        self._start_loop = _BinaryReaderEx.read_int32(reader)
+        self._end_loop = _BinaryReaderEx.read_int32(reader)
+        self._sample_rate = _BinaryReaderEx.read_int32(reader)
+        self._original_pitch = _BinaryReaderEx.read_uint8(reader)
+        self._pitch_correction = _BinaryReaderEx.read_int8(reader)
+        self._link = _BinaryReaderEx.read_uint16(reader)
+        self._sample_type = _BinaryReaderEx.read_uint16(reader)
     
     @staticmethod
     def read_from_chunk(reader: io.BytesIO, size: int) -> list:
@@ -515,12 +515,12 @@ class SampleHeader:
         return self._link
     
     @property
-    def sample_type(self) -> SampleType:
+    def sample_type(self) -> _SampleType:
         return self._sample_type
 
 
 
-class ZoneInfo:
+class _ZoneInfo:
 
     _generator_index: int
     _modulator_index: int
@@ -541,9 +541,9 @@ class ZoneInfo:
 
         for i in range(count):
 
-            zone = ZoneInfo()
-            zone._generator_index = BinaryReaderEx.read_uint16(reader)
-            zone._modulator_index = BinaryReaderEx.read_uint16(reader)
+            zone = _ZoneInfo()
+            zone._generator_index = _BinaryReaderEx.read_uint16(reader)
+            zone._modulator_index = _BinaryReaderEx.read_uint16(reader)
             zones.append(zone)
         
         for i in range(count - 1):
@@ -571,7 +571,7 @@ class ZoneInfo:
 
 
 
-class Zone:
+class _Zone:
 
     _generators: list
 
@@ -590,9 +590,9 @@ class Zone:
 
         for i in range(count):
 
-            info: ZoneInfo = infos[i]
+            info: _ZoneInfo = infos[i]
 
-            zone = Zone()
+            zone = _Zone()
             zone._generators = list()
             for j in range(info.generator_count):
                 zone._generators.append(generators[info.generator_index + j])
@@ -607,7 +607,7 @@ class Zone:
 
 
 
-class PresetInfo:
+class _PresetInfo:
 
     _name: str
     _patch_number: int
@@ -632,14 +632,14 @@ class PresetInfo:
 
         for i in range(count):
 
-            preset = PresetInfo()
-            preset._name = BinaryReaderEx.read_fixed_length_string(reader, 20)
-            preset._patch_number = BinaryReaderEx.read_uint16(reader)
-            preset._bank_number = BinaryReaderEx.read_uint16(reader)
-            preset._zone_start_index = BinaryReaderEx.read_uint16(reader)
-            preset._library = BinaryReaderEx.read_int32(reader)
-            preset._genre = BinaryReaderEx.read_int32(reader)
-            preset._morphology = BinaryReaderEx.read_int32(reader)
+            preset = _PresetInfo()
+            preset._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
+            preset._patch_number = _BinaryReaderEx.read_uint16(reader)
+            preset._bank_number = _BinaryReaderEx.read_uint16(reader)
+            preset._zone_start_index = _BinaryReaderEx.read_uint16(reader)
+            preset._library = _BinaryReaderEx.read_int32(reader)
+            preset._genre = _BinaryReaderEx.read_int32(reader)
+            preset._morphology = _BinaryReaderEx.read_int32(reader)
             presets.append(preset)
 
         for i in range(count - 1):
@@ -681,7 +681,7 @@ class PresetInfo:
 
 
 
-class InstrumentInfo:
+class _InstrumentInfo:
 
     _name: str
     _zone_start_index: int
@@ -701,9 +701,9 @@ class InstrumentInfo:
 
         for i in range(count):
 
-            instrument = InstrumentInfo()
-            instrument._name = BinaryReaderEx.read_fixed_length_string(reader, 20)
-            instrument._zone_start_index = BinaryReaderEx.read_uint16(reader)
+            instrument = _InstrumentInfo()
+            instrument._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
+            instrument._zone_start_index = _BinaryReaderEx.read_uint16(reader)
             instruments.append(instrument)
 
         for i in range(count - 1):
@@ -730,7 +730,7 @@ class Instrument:
     _name: str
     _regions: list
 
-    def __init__(self, info: InstrumentInfo, zones: list, samples: list) -> None:
+    def __init__(self, info: _InstrumentInfo, zones: list, samples: list) -> None:
         
         self._name = info.name
 
@@ -783,25 +783,25 @@ class InstrumentRegion:
     def __init__(self, instrument: Instrument, global_generators: list, local_generators: list, samples: list) -> None:
         
         self._gs = array.array("h", itertools.repeat(0, 61))
-        self._gs[GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY] = 13500
-        self._gs[GeneratorType.DELAY_MODULATION_LFO] = -12000
-        self._gs[GeneratorType.DELAY_VIBRATO_LFO] = -12000
-        self._gs[GeneratorType.DELAY_MODULATION_ENVELOPE] = -12000
-        self._gs[GeneratorType.ATTACK_MODULATION_ENVELOPE] = -12000
-        self._gs[GeneratorType.HOLD_MODULATION_ENVELOPE] = -12000
-        self._gs[GeneratorType.DECAY_MODULATION_ENVELOPE] = -12000
-        self._gs[GeneratorType.RELEASE_MODULATION_ENVELOPE] = -12000
-        self._gs[GeneratorType.DELAY_VOLUME_ENVELOPE] = -12000
-        self._gs[GeneratorType.ATTACK_VOLUME_ENVELOPE] = -12000
-        self._gs[GeneratorType.HOLD_VOLUME_ENVELOPE] = -12000
-        self._gs[GeneratorType.DECAY_VOLUME_ENVELOPE] = -12000
-        self._gs[GeneratorType.RELEASE_VOLUME_ENVELOPE] = -12000
-        self._gs[GeneratorType.KEY_RANGE] = 0x7F00
-        self._gs[GeneratorType.VELOCITY_RANGE] = 0x7F00
-        self._gs[GeneratorType.KEY_NUMBER] = -1
-        self._gs[GeneratorType.VELOCITY] = -1
-        self._gs[GeneratorType.SCALE_TUNING] = 100
-        self._gs[GeneratorType.OVERRIDING_ROOT_KEY] = -1
+        self._gs[_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY] = 13500
+        self._gs[_GeneratorType.DELAY_MODULATION_LFO] = -12000
+        self._gs[_GeneratorType.DELAY_VIBRATO_LFO] = -12000
+        self._gs[_GeneratorType.DELAY_MODULATION_ENVELOPE] = -12000
+        self._gs[_GeneratorType.ATTACK_MODULATION_ENVELOPE] = -12000
+        self._gs[_GeneratorType.HOLD_MODULATION_ENVELOPE] = -12000
+        self._gs[_GeneratorType.DECAY_MODULATION_ENVELOPE] = -12000
+        self._gs[_GeneratorType.RELEASE_MODULATION_ENVELOPE] = -12000
+        self._gs[_GeneratorType.DELAY_VOLUME_ENVELOPE] = -12000
+        self._gs[_GeneratorType.ATTACK_VOLUME_ENVELOPE] = -12000
+        self._gs[_GeneratorType.HOLD_VOLUME_ENVELOPE] = -12000
+        self._gs[_GeneratorType.DECAY_VOLUME_ENVELOPE] = -12000
+        self._gs[_GeneratorType.RELEASE_VOLUME_ENVELOPE] = -12000
+        self._gs[_GeneratorType.KEY_RANGE] = 0x7F00
+        self._gs[_GeneratorType.VELOCITY_RANGE] = 0x7F00
+        self._gs[_GeneratorType.KEY_NUMBER] = -1
+        self._gs[_GeneratorType.VELOCITY] = -1
+        self._gs[_GeneratorType.SCALE_TUNING] = 100
+        self._gs[_GeneratorType.OVERRIDING_ROOT_KEY] = -1
 
         if global_generators != None:
             for parameter in global_generators:
@@ -811,7 +811,7 @@ class InstrumentRegion:
             for parameter in local_generators:
                 self.set_parameter(parameter)
         
-        id = self._gs[GeneratorType.SAMPLE_ID]
+        id = self._gs[_GeneratorType.SAMPLE_ID]
         if not (0 <= id and id < len(samples)):
             raise Exception("The instrument '" + instrument.name + "' contains an invalid sample ID '" + id + "'.")
         self._sample = samples[id]
@@ -819,10 +819,10 @@ class InstrumentRegion:
     @staticmethod
     def create(instrument: Instrument, zones: list, samples: list) -> list:
 
-        global_zone: Zone = None
+        global_zone: _Zone = None
 
         # Is the first one the global zone?
-        if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != GeneratorType.SAMPLE_ID:
+        if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != _GeneratorType.SAMPLE_ID:
             # The first one is the global zone.
             global_zone = zones[0]
         
@@ -841,7 +841,7 @@ class InstrumentRegion:
                 regions.append(InstrumentRegion(instrument, None, zones[i].generators, samples))
             return regions
 
-    def set_parameter(self, parameter: Generator) -> None:
+    def set_parameter(self, parameter: _Generator) -> None:
 
         index = int(parameter.generator_type)
 
@@ -872,187 +872,187 @@ class InstrumentRegion:
 
     @property
     def start_address_offset(self) -> int:
-        return 32768 * self._gs[GeneratorType.START_ADDRESS_COARSE_OFFSET] + self._gs[GeneratorType.START_ADDRESS_OFFSET]
+        return 32768 * self._gs[_GeneratorType.START_ADDRESS_COARSE_OFFSET] + self._gs[_GeneratorType.START_ADDRESS_OFFSET]
 
     @property
     def end_address_offset(self) -> int:
-        return 32768 * self._gs[GeneratorType.END_ADDRESS_COARSE_OFFSET] + self._gs[GeneratorType.END_ADDRESS_OFFSET]
+        return 32768 * self._gs[_GeneratorType.END_ADDRESS_COARSE_OFFSET] + self._gs[_GeneratorType.END_ADDRESS_OFFSET]
 
     @property
     def start_loop_address_offset(self) -> int:
-        return 32768 * self._gs[GeneratorType.START_LOOP_ADDRESS_COARSE_OFFSET] + self._gs[GeneratorType.START_LOOP_ADDRESS_OFFSET]
+        return 32768 * self._gs[_GeneratorType.START_LOOP_ADDRESS_COARSE_OFFSET] + self._gs[_GeneratorType.START_LOOP_ADDRESS_OFFSET]
 
     @property
     def end_loop_address_offset(self) -> int:
-        return 32768 * self._gs[GeneratorType.END_LOOP_ADDRESS_COARSE_OFFSET] + self._gs[GeneratorType.END_LOOP_ADDRESS_OFFSET]
+        return 32768 * self._gs[_GeneratorType.END_LOOP_ADDRESS_COARSE_OFFSET] + self._gs[_GeneratorType.END_LOOP_ADDRESS_OFFSET]
 
     @property
     def modulation_lfo_to_pitch(self) -> int:
-        return self._gs[GeneratorType.MODULATION_LFO_TO_PITCH]
+        return self._gs[_GeneratorType.MODULATION_LFO_TO_PITCH]
 
     @property
     def vibrato_lfo_to_pitch(self) -> int:
-        return self._gs[GeneratorType.VIBRATO_LFO_TO_PITCH]
+        return self._gs[_GeneratorType.VIBRATO_LFO_TO_PITCH]
 
     @property
     def modulation_envelope_to_pitch(self) -> int:
-        return self._gs[GeneratorType.MODULATION_ENVELOPE_TO_PITCH]
+        return self._gs[_GeneratorType.MODULATION_ENVELOPE_TO_PITCH]
 
     @property
     def initial_filter_cutoff_frequency(self) -> float:
-        return SoundFontMath.cents_to_hertz(self._gs[GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY])
+        return _SoundFontMath.cents_to_hertz(self._gs[_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY])
 
     @property
     def initial_filter_q(self) -> float:
-        return 0.1 * self._gs[GeneratorType.INITIAL_FILTER_Q]
+        return 0.1 * self._gs[_GeneratorType.INITIAL_FILTER_Q]
 
     @property
     def modulation_lfo_to_filter_cutoff_frequency(self) -> int:
-        return self._gs[GeneratorType.MODULATION_LFO_TO_FILTER_CUTOFF_FREQUENCY]
+        return self._gs[_GeneratorType.MODULATION_LFO_TO_FILTER_CUTOFF_FREQUENCY]
 
     @property
     def modulation_envelope_to_filter_cutoff_frequency(self) -> int:
-        return self._gs[GeneratorType.MODULATION_ENVELOPE_TO_FILTER_CUTOFF_FREQUENCY]
+        return self._gs[_GeneratorType.MODULATION_ENVELOPE_TO_FILTER_CUTOFF_FREQUENCY]
 
     @property
     def modulation_lfo_to_volume(self) -> float:
-        return 0.1 * self._gs[GeneratorType.MODULATION_LFO_TO_VOLUME]
+        return 0.1 * self._gs[_GeneratorType.MODULATION_LFO_TO_VOLUME]
 
     @property
     def chorus_effects_send(self) -> float:
-        return 0.1 * self._gs[GeneratorType.CHORUS_EFFECTS_SEND]
+        return 0.1 * self._gs[_GeneratorType.CHORUS_EFFECTS_SEND]
 
     @property
     def reverb_effects_send(self) -> float:
-        return 0.1 * self._gs[GeneratorType.REVERB_EFFECTS_SEND]
+        return 0.1 * self._gs[_GeneratorType.REVERB_EFFECTS_SEND]
 
     @property
     def pan(self) -> float:
-        return 0.1 * self._gs[GeneratorType.PAN]
+        return 0.1 * self._gs[_GeneratorType.PAN]
 
     @property
     def delay_modulation_lfo(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.DELAY_MODULATION_LFO])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DELAY_MODULATION_LFO])
 
     @property
     def frequency_modulation_lfo(self) -> float:
-        return SoundFontMath.cents_to_hertz(self._gs[GeneratorType.FREQUENCY_MODULATION_LFO])
+        return _SoundFontMath.cents_to_hertz(self._gs[_GeneratorType.FREQUENCY_MODULATION_LFO])
 
     @property
     def delay_vibrato_lfo(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.DELAY_VIBRATO_LFO])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DELAY_VIBRATO_LFO])
 
     @property
     def frequency_vibrato_lfo(self) -> float:
-        return SoundFontMath.cents_to_hertz(self._gs[GeneratorType.FREQUENCY_VIBRATO_LFO])
+        return _SoundFontMath.cents_to_hertz(self._gs[_GeneratorType.FREQUENCY_VIBRATO_LFO])
 
     @property
     def delay_modulation_envelope(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.DELAY_MODULATION_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DELAY_MODULATION_ENVELOPE])
 
     @property
     def attack_modulation_envelope(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.ATTACK_MODULATION_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.ATTACK_MODULATION_ENVELOPE])
 
     @property
     def hold_modulation_envelope(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.HOLD_MODULATION_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.HOLD_MODULATION_ENVELOPE])
 
     @property
     def decay_modulation_envelope(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.DECAY_MODULATION_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DECAY_MODULATION_ENVELOPE])
 
     @property
     def sustain_modulation_envelope(self) -> float:
-        return 0.1 * self._gs[GeneratorType.SUSTAIN_MODULATION_ENVELOPE]
+        return 0.1 * self._gs[_GeneratorType.SUSTAIN_MODULATION_ENVELOPE]
 
     @property
     def release_modulation_envelope(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.RELEASE_MODULATION_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.RELEASE_MODULATION_ENVELOPE])
 
     @property
     def key_number_to_modulation_envelope_hold(self) -> int:
-        return self._gs[GeneratorType.KEY_NUMBER_TO_MODULATION_ENVELOPE_HOLD]
+        return self._gs[_GeneratorType.KEY_NUMBER_TO_MODULATION_ENVELOPE_HOLD]
 
     @property
     def key_number_to_modulation_envelope_decay(self) -> int:
-        return self._gs[GeneratorType.KEY_NUMBER_TO_MODULATION_ENVELOPE_DECAY]
+        return self._gs[_GeneratorType.KEY_NUMBER_TO_MODULATION_ENVELOPE_DECAY]
 
     @property
     def delay_volume_envelope(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.DELAY_VOLUME_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DELAY_VOLUME_ENVELOPE])
 
     @property
     def attack_volume_envelope(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.ATTACK_VOLUME_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.ATTACK_VOLUME_ENVELOPE])
 
     @property
     def hold_volume_envelope(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.HOLD_VOLUME_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.HOLD_VOLUME_ENVELOPE])
 
     @property
     def decay_volume_envelope(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.DECAY_VOLUME_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DECAY_VOLUME_ENVELOPE])
 
     @property
     def sustain_volume_envelope(self) -> float:
-        return 0.1 * self._gs[GeneratorType.SUSTAIN_VOLUME_ENVELOPE]
+        return 0.1 * self._gs[_GeneratorType.SUSTAIN_VOLUME_ENVELOPE]
 
     @property
     def release_volume_envelope(self) -> float:
-        return SoundFontMath.timecents_to_seconds(self._gs[GeneratorType.RELEASE_VOLUME_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.RELEASE_VOLUME_ENVELOPE])
 
     @property
     def key_number_to_volume_envelope_hold(self) -> int:
-        return self._gs[GeneratorType.KEY_NUMBER_TO_VOLUME_ENVELOPE_HOLD]
+        return self._gs[_GeneratorType.KEY_NUMBER_TO_VOLUME_ENVELOPE_HOLD]
 
     @property
     def key_number_to_volume_envelope_decay(self) -> int:
-        return self._gs[GeneratorType.KEY_NUMBER_TO_VOLUME_ENVELOPE_DECAY]
+        return self._gs[_GeneratorType.KEY_NUMBER_TO_VOLUME_ENVELOPE_DECAY]
 
     @property
     def key_range_start(self) -> int:
-        return self._gs[GeneratorType.KEY_RANGE] & 0xFF
+        return self._gs[_GeneratorType.KEY_RANGE] & 0xFF
 
     @property
     def key_range_end(self) -> int:
-        return (self._gs[GeneratorType.KEY_RANGE] >> 8) & 0xFF
+        return (self._gs[_GeneratorType.KEY_RANGE] >> 8) & 0xFF
 
     @property
     def velocity_range_start(self) -> int:
-        return self._gs[GeneratorType.VELOCITY_RANGE] & 0xFF
+        return self._gs[_GeneratorType.VELOCITY_RANGE] & 0xFF
 
     @property
     def velocity_range_end(self) -> int:
-        return (self._gs[GeneratorType.VELOCITY_RANGE] >> 8) & 0xFF
+        return (self._gs[_GeneratorType.VELOCITY_RANGE] >> 8) & 0xFF
 
     @property
     def initial_attenuation(self) -> float:
-        return 0.1 * self._gs[GeneratorType.INITIAL_ATTENUATION]
+        return 0.1 * self._gs[_GeneratorType.INITIAL_ATTENUATION]
 
     @property
     def coarse_tune(self) -> int:
-        return self._gs[GeneratorType.COARSE_TUNE]
+        return self._gs[_GeneratorType.COARSE_TUNE]
 
     @property
     def fine_tune(self) -> int:
-        return self._gs[GeneratorType.FINE_TUNE] + self._sample.pitch_correction
+        return self._gs[_GeneratorType.FINE_TUNE] + self._sample.pitch_correction
 
     @property
     def sample_modes(self) -> LoopMode:
-        return LoopMode(self._gs[GeneratorType.SAMPLE_MODES]) if self._gs[GeneratorType.SAMPLE_MODES] != 2 else LoopMode.NO_LOOP
+        return LoopMode(self._gs[_GeneratorType.SAMPLE_MODES]) if self._gs[_GeneratorType.SAMPLE_MODES] != 2 else LoopMode.NO_LOOP
 
     @property
     def scale_tuning(self) -> int:
-        return self._gs[GeneratorType.SCALE_TUNING]
+        return self._gs[_GeneratorType.SCALE_TUNING]
 
     @property
     def exclusive_class(self) -> int:
-        return self._gs[GeneratorType.EXCLUSIVE_CLASS]
+        return self._gs[_GeneratorType.EXCLUSIVE_CLASS]
 
     @property
     def root_key(self) -> int:
-        return self._gs[GeneratorType.OVERRIDING_ROOT_KEY] if self._gs[GeneratorType.OVERRIDING_ROOT_KEY] != -1 else self._sample.original_pitch
+        return self._gs[_GeneratorType.OVERRIDING_ROOT_KEY] if self._gs[_GeneratorType.OVERRIDING_ROOT_KEY] != -1 else self._sample.original_pitch
 
 
 
@@ -1066,7 +1066,7 @@ class Preset:
     _morphology: int
     _regions: list
 
-    def __init__(self, info: PresetInfo, zones: list, instruments: list) -> None:
+    def __init__(self, info: _PresetInfo, zones: list, instruments: list) -> None:
         
         self._name = info.name
         self._patch_number = info.patch_number
@@ -1136,8 +1136,8 @@ class PresetRegion:
     def __init__(self, preset: Preset, global_generators: list, local_generators: list, instruments: list) -> None:
         
         self._gs = array.array("h", itertools.repeat(0, 61))
-        self._gs[GeneratorType.KEY_RANGE] = 0x7F00
-        self._gs[GeneratorType.VELOCITY_RANGE] = 0x7F00
+        self._gs[_GeneratorType.KEY_RANGE] = 0x7F00
+        self._gs[_GeneratorType.VELOCITY_RANGE] = 0x7F00
 
         if global_generators != None:
             for parameter in global_generators:
@@ -1147,7 +1147,7 @@ class PresetRegion:
             for parameter in local_generators:
                 self.set_parameter(parameter)
         
-        id = self._gs[GeneratorType.INSTRUMENT]
+        id = self._gs[_GeneratorType.INSTRUMENT]
         if not (0 <= id and id < len(instruments)):
             raise Exception("The preset '" + preset.name + "' contains an invalid instrument ID '" + id + "'.")
         self._instrument = instruments[id]
@@ -1155,10 +1155,10 @@ class PresetRegion:
     @staticmethod
     def create(preset: Preset, zones: list, instruments: list) -> list:
 
-        global_zone: Zone = None
+        global_zone: _Zone = None
 
         # Is the first one the global zone?
-        if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != GeneratorType.INSTRUMENT:
+        if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != _GeneratorType.INSTRUMENT:
             # The first one is the global zone.
             global_zone = zones[0]
         
@@ -1177,7 +1177,7 @@ class PresetRegion:
                 regions.append(PresetRegion(preset, None, zones[i].generators, instruments))
             return regions
 
-    def set_parameter(self, parameter: Generator) -> None:
+    def set_parameter(self, parameter: _Generator) -> None:
 
         index = int(parameter.generator_type)
 
@@ -1192,163 +1192,163 @@ class PresetRegion:
 
     @property
     def modulation_lfo_to_pitch(self) -> int:
-        return self._gs[GeneratorType.MODULATION_LFO_TO_PITCH]
+        return self._gs[_GeneratorType.MODULATION_LFO_TO_PITCH]
 
     @property
     def vibrato_lfo_to_pitch(self) -> int:
-        return self._gs[GeneratorType.VIBRATO_LFO_TO_PITCH]
+        return self._gs[_GeneratorType.VIBRATO_LFO_TO_PITCH]
 
     @property
     def modulation_envelope_to_pitch(self) -> int:
-        return self._gs[GeneratorType.MODULATION_ENVELOPE_TO_PITCH]
+        return self._gs[_GeneratorType.MODULATION_ENVELOPE_TO_PITCH]
 
     @property
     def initial_filter_cutoff_frequency(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY])
 
     @property
     def initial_filter_q(self) -> float:
-        return 0.1 * self._gs[GeneratorType.INITIAL_FILTER_Q]
+        return 0.1 * self._gs[_GeneratorType.INITIAL_FILTER_Q]
 
     @property
     def modulation_lfo_to_filter_cutoff_frequency(self) -> int:
-        return self._gs[GeneratorType.MODULATION_LFO_TO_FILTER_CUTOFF_FREQUENCY]
+        return self._gs[_GeneratorType.MODULATION_LFO_TO_FILTER_CUTOFF_FREQUENCY]
 
     @property
     def modulation_envelope_to_filter_cutoff_frequency(self) -> int:
-        return self._gs[GeneratorType.MODULATION_ENVELOPE_TO_FILTER_CUTOFF_FREQUENCY]
+        return self._gs[_GeneratorType.MODULATION_ENVELOPE_TO_FILTER_CUTOFF_FREQUENCY]
 
     @property
     def modulation_lfo_to_volume(self) -> float:
-        return 0.1 * self._gs[GeneratorType.MODULATION_LFO_TO_VOLUME]
+        return 0.1 * self._gs[_GeneratorType.MODULATION_LFO_TO_VOLUME]
 
     @property
     def chorus_effects_send(self) -> float:
-        return 0.1 * self._gs[GeneratorType.CHORUS_EFFECTS_SEND]
+        return 0.1 * self._gs[_GeneratorType.CHORUS_EFFECTS_SEND]
 
     @property
     def reverb_effects_send(self) -> float:
-        return 0.1 * self._gs[GeneratorType.REVERB_EFFECTS_SEND]
+        return 0.1 * self._gs[_GeneratorType.REVERB_EFFECTS_SEND]
 
     @property
     def pan(self) -> float:
-        return 0.1 * self._gs[GeneratorType.PAN]
+        return 0.1 * self._gs[_GeneratorType.PAN]
 
     @property
     def delay_modulation_lfo(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.DELAY_MODULATION_LFO])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DELAY_MODULATION_LFO])
 
     @property
     def frequency_modulation_lfo(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.FREQUENCY_MODULATION_LFO])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.FREQUENCY_MODULATION_LFO])
 
     @property
     def delay_vibrato_lfo(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.DELAY_VIBRATO_LFO])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DELAY_VIBRATO_LFO])
 
     @property
     def frequency_vibrato_lfo(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.FREQUENCY_VIBRATO_LFO])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.FREQUENCY_VIBRATO_LFO])
 
     @property
     def delay_modulation_envelope(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.DELAY_MODULATION_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DELAY_MODULATION_ENVELOPE])
 
     @property
     def attack_modulation_envelope(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.ATTACK_MODULATION_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.ATTACK_MODULATION_ENVELOPE])
 
     @property
     def hold_modulation_envelope(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.HOLD_MODULATION_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.HOLD_MODULATION_ENVELOPE])
 
     @property
     def decay_modulation_envelope(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.DECAY_MODULATION_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DECAY_MODULATION_ENVELOPE])
 
     @property
     def sustain_modulation_envelope(self) -> float:
-        return 0.1 * self._gs[GeneratorType.SUSTAIN_MODULATION_ENVELOPE]
+        return 0.1 * self._gs[_GeneratorType.SUSTAIN_MODULATION_ENVELOPE]
 
     @property
     def release_modulation_envelope(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.RELEASE_MODULATION_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.RELEASE_MODULATION_ENVELOPE])
 
     @property
     def key_number_to_modulation_envelope_hold(self) -> int:
-        return self._gs[GeneratorType.KEY_NUMBER_TO_MODULATION_ENVELOPE_HOLD]
+        return self._gs[_GeneratorType.KEY_NUMBER_TO_MODULATION_ENVELOPE_HOLD]
 
     @property
     def key_number_to_modulation_envelope_decay(self) -> int:
-        return self._gs[GeneratorType.KEY_NUMBER_TO_MODULATION_ENVELOPE_DECAY]
+        return self._gs[_GeneratorType.KEY_NUMBER_TO_MODULATION_ENVELOPE_DECAY]
 
     @property
     def delay_volume_envelope(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.DELAY_VOLUME_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DELAY_VOLUME_ENVELOPE])
 
     @property
     def attack_volume_envelope(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.ATTACK_VOLUME_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.ATTACK_VOLUME_ENVELOPE])
 
     @property
     def hold_volume_envelope(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.HOLD_VOLUME_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.HOLD_VOLUME_ENVELOPE])
 
     @property
     def decay_volume_envelope(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.DECAY_VOLUME_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DECAY_VOLUME_ENVELOPE])
 
     @property
     def sustain_volume_envelope(self) -> float:
-        return 0.1 * self._gs[GeneratorType.SUSTAIN_VOLUME_ENVELOPE]
+        return 0.1 * self._gs[_GeneratorType.SUSTAIN_VOLUME_ENVELOPE]
 
     @property
     def release_volume_envelope(self) -> float:
-        return SoundFontMath.cents_to_multiplying_factor(self._gs[GeneratorType.RELEASE_VOLUME_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.RELEASE_VOLUME_ENVELOPE])
 
     @property
     def key_number_to_volume_envelope_hold(self) -> int:
-        return self._gs[GeneratorType.KEY_NUMBER_TO_VOLUME_ENVELOPE_HOLD]
+        return self._gs[_GeneratorType.KEY_NUMBER_TO_VOLUME_ENVELOPE_HOLD]
 
     @property
     def key_number_to_volume_envelope_decay(self) -> int:
-        return self._gs[GeneratorType.KEY_NUMBER_TO_VOLUME_ENVELOPE_DECAY]
+        return self._gs[_GeneratorType.KEY_NUMBER_TO_VOLUME_ENVELOPE_DECAY]
 
     @property
     def key_range_start(self) -> int:
-        return self._gs[GeneratorType.KEY_RANGE] & 0xFF
+        return self._gs[_GeneratorType.KEY_RANGE] & 0xFF
 
     @property
     def key_range_end(self) -> int:
-        return (self._gs[GeneratorType.KEY_RANGE] >> 8) & 0xFF
+        return (self._gs[_GeneratorType.KEY_RANGE] >> 8) & 0xFF
 
     @property
     def velocity_range_start(self) -> int:
-        return self._gs[GeneratorType.VELOCITY_RANGE] & 0xFF
+        return self._gs[_GeneratorType.VELOCITY_RANGE] & 0xFF
 
     @property
     def velocity_range_end(self) -> int:
-        return (self._gs[GeneratorType.VELOCITY_RANGE] >> 8) & 0xFF
+        return (self._gs[_GeneratorType.VELOCITY_RANGE] >> 8) & 0xFF
 
     @property
     def initial_attenuation(self) -> float:
-        return 0.1 * self._gs[GeneratorType.INITIAL_ATTENUATION]
+        return 0.1 * self._gs[_GeneratorType.INITIAL_ATTENUATION]
 
     @property
     def coarse_tune(self) -> int:
-        return self._gs[GeneratorType.COARSE_TUNE]
+        return self._gs[_GeneratorType.COARSE_TUNE]
 
     @property
     def fine_tune(self) -> int:
-        return self._gs[GeneratorType.FINE_TUNE]
+        return self._gs[_GeneratorType.FINE_TUNE]
 
     @property
     def scale_tuning(self) -> int:
-        return self._gs[GeneratorType.SCALE_TUNING]
+        return self._gs[_GeneratorType.SCALE_TUNING]
 
 
 
-class SoundFontParameters:
+class _SoundFontParameters:
 
     _sample_headers: list
     _presets: list
@@ -1356,13 +1356,13 @@ class SoundFontParameters:
 
     def __init__(self, reader: io.BytesIO) -> None:
         
-        chunk_id = BinaryReaderEx.read_four_cc(reader)
+        chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
         
-        end = reader.tell() + BinaryReaderEx.read_int32(reader)
+        end = reader.tell() + _BinaryReaderEx.read_int32(reader)
 
-        list_type = BinaryReaderEx.read_four_cc(reader)
+        list_type = _BinaryReaderEx.read_four_cc(reader)
         if list_type != "pdta":
             raise Exception("The type of the LIST chunk must be 'pdta', but was '" + list_type + "'.")
 
@@ -1376,34 +1376,34 @@ class SoundFontParameters:
 
         while reader.tell() < end:
 
-            id = BinaryReaderEx.read_four_cc(reader)
-            size = BinaryReaderEx.read_uint32(reader)
+            id = _BinaryReaderEx.read_four_cc(reader)
+            size = _BinaryReaderEx.read_uint32(reader)
 
             match id:
 
                 case "phdr":
-                    preset_infos = PresetInfo.read_from_chunk(reader, size)
+                    preset_infos = _PresetInfo.read_from_chunk(reader, size)
 
                 case "pbag":
-                    preset_bag = ZoneInfo.read_from_chunk(reader, size)
+                    preset_bag = _ZoneInfo.read_from_chunk(reader, size)
 
                 case "pmod":
-                    Modulator.discard_data(reader, size)
+                    _Modulator.discard_data(reader, size)
 
                 case "pgen":
-                    preset_generators = Generator.read_from_chunk(reader, size)
+                    preset_generators = _Generator.read_from_chunk(reader, size)
 
                 case "inst":
-                    instrument_infos = InstrumentInfo.read_from_chunk(reader, size)
+                    instrument_infos = _InstrumentInfo.read_from_chunk(reader, size)
 
                 case "ibag":
-                    instrument_bag = ZoneInfo.read_from_chunk(reader, size)
+                    instrument_bag = _ZoneInfo.read_from_chunk(reader, size)
 
                 case "imod":
-                    Modulator.discard_data(reader, size)
+                    _Modulator.discard_data(reader, size)
 
                 case "igen":
-                    instrument_generators = Generator.read_from_chunk(reader, size)
+                    instrument_generators = _Generator.read_from_chunk(reader, size)
 
                 case "shdr":
                     sample_headers = SampleHeader.read_from_chunk(reader, size)
@@ -1434,10 +1434,10 @@ class SoundFontParameters:
 
         self._sample_headers = sample_headers
         
-        instrument_zones = Zone.create(instrument_bag, instrument_generators)
+        instrument_zones = _Zone.create(instrument_bag, instrument_generators)
         self._instruments = Instrument.create(instrument_infos, instrument_zones, sample_headers)
 
-        preset_zones = Zone.create(preset_bag, preset_generators)
+        preset_zones = _Zone.create(preset_bag, preset_generators)
         self._presets = Preset.create(preset_infos, preset_zones, self._instruments)
 
     @property
@@ -1465,23 +1465,23 @@ class SoundFont:
 
     def __init__(self, reader: io.BytesIO) -> None:
 
-        chunk_id = BinaryReaderEx.read_four_cc(reader)
+        chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "RIFF":
             raise Exception("The RIFF chunk was not found.")
 
-        size = BinaryReaderEx.read_uint32(reader)
+        size = _BinaryReaderEx.read_uint32(reader)
 
-        form_type = BinaryReaderEx.read_four_cc(reader)
+        form_type = _BinaryReaderEx.read_four_cc(reader)
         if form_type != "sfbk":
             raise Exception("The type of the RIFF chunk must be 'sfbk', but was '" + form_type + "'.")
         
         self._info = SoundFontInfo(reader)
 
-        sample_data = SoundFontSampleData(reader)
+        sample_data = _SoundFontSampleData(reader)
         self._bits_per_sample = sample_data.bits_per_sample
         self._wave_data = sample_data.samples
 
-        parameters = SoundFontParameters(reader)
+        parameters = _SoundFontParameters(reader)
         self._sample_headers = parameters.sample_headers
         self._presets = parameters.presets
         self._instruments = parameters.instruments
@@ -1505,6 +1505,3 @@ class SoundFont:
     @property
     def instruments(self) -> list:
         return self._instruments
-
-
-
