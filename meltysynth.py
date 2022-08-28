@@ -1,8 +1,8 @@
 import array
+import enum
 import io
 import itertools
 import math
-from enum import IntEnum
 
 
 
@@ -307,7 +307,7 @@ class _SoundFontSampleData:
 
 
 
-class _GeneratorType(IntEnum):
+class _GeneratorType(enum.IntEnum):
 
     START_ADDRESS_OFFSET = 0
     END_ADDRESS_OFFSET = 1
@@ -422,7 +422,7 @@ class _Modulator:
 
 
 
-class _SampleType(IntEnum):
+class _SampleType(enum.IntEnum):
 
     MONO = 1
     RIGHT = 2
@@ -767,7 +767,7 @@ class Instrument:
 
 
 
-class LoopMode(IntEnum):
+class LoopMode(enum.IntEnum):
 
     NO_LOOP = 0
     CONTINUOUS = 1
