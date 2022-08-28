@@ -136,11 +136,11 @@ class SoundFontVersion:
         self._minor = minor
 
     @property
-    def Major(self) -> int:
+    def major(self) -> int:
         return self._major
 
     @property
-    def Minor(self) -> int:
+    def minor(self) -> int:
         return self._minor
 
 
@@ -153,7 +153,7 @@ class SoundFontInfo:
     _rom_name: str = ""
     _rom_version: SoundFontVersion = SoundFontVersion(0, 0)
     _creation_date: str = ""
-    _auther: str = ""
+    _author: str = ""
     _target_product: str = ""
     _copyright: str = ""
     _comments: str = ""
@@ -215,7 +215,7 @@ class SoundFontInfo:
                     raise Exception("The INFO list contains an unknown ID '" + id + "'.")
 
     @property
-    def sound_font_version(self) -> SoundFontVersion:
+    def version(self) -> SoundFontVersion:
         return self._version
     
     @property
@@ -239,8 +239,8 @@ class SoundFontInfo:
         return self._creation_date
     
     @property
-    def auther(self) -> str:
-        return self._auther
+    def author(self) -> str:
+        return self._author
     
     @property
     def target_product(self) -> str:
