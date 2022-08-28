@@ -401,7 +401,7 @@ class _Generator:
         return generators
     
     @property
-    def generator_type(self) -> list:
+    def generator_type(self) -> _GeneratorType:
         return self._generator_type
     
     @property

@@ -9,7 +9,7 @@ from tests.region_utils import RegionUtils
 
 class TestInstrumentRegion(unittest.TestCase):
 
-    def test_instrument_region(self):
+    def test_instrument_region(self) -> None:
 
         reference = list()
 

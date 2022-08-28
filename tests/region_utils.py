@@ -20,7 +20,7 @@ class RegionUtils:
         return True
     
     @staticmethod
-    def check_instrument_region(test_case: unittest.TestCase, instrument: ms.Instrument, region: ms.InstrumentRegion, values: list):
+    def check_instrument_region(test_case: unittest.TestCase, instrument: ms.Instrument, region: ms.InstrumentRegion, values: list) -> None:
 
         test_case.assertTrue(RegionUtils.are_equal(region.sample_start, values[0]), instrument.name + "_sample_start")
         test_case.assertTrue(RegionUtils.are_equal(region.sample_end, values[1]), instrument.name + "_sample_end")
@@ -74,7 +74,7 @@ class RegionUtils:
         test_case.assertTrue(RegionUtils.are_equal(region.root_key, values[49]), instrument.name + "_root_key")
 
     @staticmethod
-    def check_preset_region(test_case: unittest.TestCase, preset: ms.Preset, region: ms.PresetRegion, values: list):
+    def check_preset_region(test_case: unittest.TestCase, preset: ms.Preset, region: ms.PresetRegion, values: list) -> None:
 
         test_case.assertTrue(RegionUtils.are_equal(region.modulation_lfo_to_pitch, values[0]), preset.name + "_modulation_lfo_to_pitch")
         test_case.assertTrue(RegionUtils.are_equal(region.vibrato_lfo_to_pitch, values[1]), preset.name + "_vibrato_lfo_to_pitch")

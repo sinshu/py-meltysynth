@@ -7,7 +7,7 @@ import meltysynth as ms
 
 class TestTimGM6mb(unittest.TestCase):
 
-    def test_sound_font_info(self):
+    def test_sound_font_info(self) -> None:
         
         file = io.open("TimGM6mb.sf2", "rb")
         sf2 = ms.SoundFont(file)
@@ -28,7 +28,7 @@ class TestTimGM6mb(unittest.TestCase):
         self.assertEqual(info.comments, "")
         self.assertEqual(info.tools, "Awave Studio v8.5")
 
-    def test_sample_data(self):
+    def test_sample_data(self) -> None:
 
         file = io.open("TimGM6mb.sf2", "rb")
         sf2 = ms.SoundFont(file)
@@ -44,7 +44,7 @@ class TestTimGM6mb(unittest.TestCase):
 
 class TestGeneralUserGsMuseScore(unittest.TestCase):
 
-    def test_sound_font_info(self):
+    def test_sound_font_info(self) -> None:
         
         file = io.open("GeneralUser GS MuseScore v1.442.sf2", "rb")
         sf2 = ms.SoundFont(file)
@@ -65,7 +65,7 @@ class TestGeneralUserGsMuseScore(unittest.TestCase):
         self.assertEqual(len(info.comments), 2207)
         self.assertEqual(info.tools, ":SFEDT v1.10:SFEDT v1.36:")
     
-    def test_sample_data(self):
+    def test_sample_data(self) -> None:
 
         file = io.open("GeneralUser GS MuseScore v1.442.sf2", "rb")
         sf2 = ms.SoundFont(file)
