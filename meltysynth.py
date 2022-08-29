@@ -851,6 +851,10 @@ class InstrumentRegion:
         contains_key = self.key_range_start <= key and key <= self.key_range_end
         contains_velocity = self.velocity_range_start <= velocity and velocity <= self.velocity_range_end
         return contains_key and contains_velocity
+    
+    @property
+    def sample(self) -> SampleHeader:
+        return self._sample
 
     @property
     def sample_start(self) -> int:
@@ -1187,6 +1191,10 @@ class PresetRegion:
         contains_key = self.key_range_start <= key and key <= self.key_range_end
         contains_velocity = self.velocity_range_start <= velocity and velocity <= self.velocity_range_end
         return contains_key and contains_velocity
+    
+    @property
+    def instrument(self) -> Instrument:
+        return self._instrument
 
     @property
     def modulation_lfo_to_pitch(self) -> int:
@@ -1518,6 +1526,14 @@ class _RegionPair:
     
     def get_value(self, generator_type: _GeneratorType) -> int:
         return self._preset._gs[generator_type] + self._instrument._gs[generator_type]
+    
+    @property
+    def preset(self) -> PresetRegion:
+        return self._preset
+    
+    @property
+    def instrument(self) -> InstrumentRegion:
+        return self._instrument
     
     @property
     def sample_start(self) -> int:
@@ -2127,3 +2143,59 @@ class _Lfo:
     @property
     def value(self) -> float:
         return self._value
+
+
+
+class _RegionEx:
+
+    @staticmethod
+    def start_oscillator(oscillator: _Oscillator, data: array.array, region: _RegionPair) -> None:
+        
+        sample_rate = region.instrument.sample.sample_rate
+        loop_mode = region.sample_modes
+        start = region.sample_start
+        end = region.sample_end
+        start_loop = region.sample_start_loop
+        end_Loop = region.sample_end_loop
+        root_key = region.root_key
+        coarse_tune = region.coarse_tune
+        fine_tune = region.fine_tune
+        scale_tuning = region.scale_tuning
+
+        oscillator.start(data, loop_mode, sample_rate, start, end, start_loop, end_Loop, root_key, coarse_tune, fine_tune, scale_tuning)
+    
+    @staticmethod
+    def start_volume_envelope(envelope: _VolumeEnvelope, region: _RegionPair, key: int, velocity: int) -> None:
+
+        # If the release time is shorter than 10 ms, it will be clamped to 10 ms to avoid pop noise.
+
+        delay = region.delay_volume_envelope
+        attack = region.attack_volume_envelope
+        hold = region.hold_volume_envelope * _SoundFontMath.key_number_to_multiplying_factor(region.key_number_to_volume_envelope_hold, key)
+        decay = region.decay_volume_envelope * _SoundFontMath.key_number_to_multiplying_factor(region.key_number_to_volume_envelope_decay, key)
+        sustain = _SoundFontMath.decibels_to_linear(-region.sustain_volume_envelope)
+        release = max(region.release_volume_envelope, 0.01)
+
+        envelope.start(delay, attack, hold, decay, sustain, release)
+    
+    @staticmethod
+    def start_modulation_envelope(envelope: _ModulationEnvelope, region: _RegionPair, key: int, velocity: int) -> None:
+
+        # According to the implementation of TinySoundFont, the attack time should be adjusted by the velocity.
+
+        delay = region.delay_modulation_envelope
+        attack = region.attack_modulation_envelope * ((145 - velocity) / 144.0)
+        hold = region.hold_modulation_envelope * _SoundFontMath.key_number_to_multiplying_factor(region.key_number_to_modulation_envelope_hold, key)
+        decay = region.decay_modulation_envelope * _SoundFontMath.key_number_to_multiplying_factor(region.key_number_to_modulation_envelope_decay, key)
+        sustain = 1.0 - region.sustain_modulation_envelope / 100.0
+        release = region.release_modulation_envelope
+
+        envelope.start(delay, attack, hold, decay, sustain, release)
+    
+    @staticmethod
+    def start_vibrato(lfo: _Lfo, region: _RegionPair, key: int, velocity: int) -> None:
+        lfo.start(region.delay_vibrato_lfo, region.frequency_vibrato_lfo)
+    
+    @staticmethod
+    def start_modulation(lfo: _Lfo, region: _RegionPair, key: int, velocity: int) -> None:
+        lfo.start(region.delay_modulation_lfo, region.frequency_modulation_lfo)
