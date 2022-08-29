@@ -1822,3 +1822,246 @@ class _Oscillator:
             self._position += pitch_ratio
 
         return True
+
+
+
+class _EnvelopeStage(enum.IntEnum):
+
+    DELAY = 0
+    ATTACK = 1
+    HOLD = 2
+    DECAY = 3
+    RELEASE = 4
+
+
+
+class _VolumeEnvelope:
+
+    _synthesizer: Synthesizer
+
+    _attack_slope: float
+    _decay_slope: float
+    _release_slope: float
+
+    _attack_start_time: float
+    _hold_start_time: float
+    _decay_start_time: float
+    _release_start_time: float
+
+    _sustain_level: float
+    _release_level: float
+
+    _processed_sample_count: int
+    _stage: _EnvelopeStage
+    _value: float
+
+    _priority: float
+
+    def __init__(self, synthesizer: Synthesizer) -> None:
+        self._synthesizer = synthesizer
+    
+    def start(self, delay: float, attack: float, hold: float, decay: float, sustain: float, release: float) -> None:
+
+        self._attack_slope = 1 / attack
+        self._decay_slope = -9.226 / decay
+        self._release_slope = -9.226 / release
+
+        self._attack_start_time = delay
+        self._hold_start_time = self._attack_start_time + attack
+        self._decay_start_time = self._hold_start_time + hold
+        self._release_start_time = 0
+
+        self._sustain_level = _SoundFontMath.clamp(sustain, 0, 1)
+        self._release_level = 0
+
+        self._processed_sample_count = 0
+        self._stage = _EnvelopeStage.DELAY
+        self._value = 0
+
+        self.process(0)
+
+    def release(self) -> None:
+
+        self._stage = _EnvelopeStage.RELEASE
+        self._release_start_time = float(self._processed_sample_count) / self._synthesizer.sample_rate
+        self._release_level = self._value
+    
+    def process(self, sample_count: int) -> bool:
+
+        self._processed_sample_count += sample_count
+
+        current_time = float(self._processed_sample_count) / self._synthesizer.sample_rate
+
+        while self._stage <= _EnvelopeStage.HOLD:
+
+            end_time: float
+
+            match self._stage:
+
+                case _EnvelopeStage.DELAY:
+                    end_time = self._attack_start_time
+
+                case _EnvelopeStage.ATTACK:
+                    end_time = self._hold_start_time
+
+                case _EnvelopeStage.HOLD:
+                    end_time = self._decay_start_time
+
+                case _:
+                    raise Exception("Invalid envelope stage.")
+
+            if current_time < end_time:
+                break
+            else:
+                self._stage += 1
+
+        match self._stage:
+
+            case _EnvelopeStage.DELAY:
+                self._value = 0
+                self._priority = 4 + self._value
+                return True
+
+            case _EnvelopeStage.ATTACK:
+                self._value = self._attack_slope * (current_time - self._attack_start_time)
+                self._priority = 3 + self._value
+                return True
+
+            case _EnvelopeStage.HOLD:
+                self._value = 1
+                self._priority = 2 + self._value
+                return True
+
+            case _EnvelopeStage.DECAY:
+                self._value = max(_SoundFontMath.exp_cutoff(self._decay_slope * (current_time - self._decay_start_time)), self._sustain_level)
+                self._priority = 1 + self._value
+                return self._value > _SoundFontMath.non_audible
+
+            case _EnvelopeStage.RELEASE:
+                self._value = self._release_level * _SoundFontMath.exp_cutoff(self._release_slope * (current_time - self._release_start_time))
+                self._priority = self._value
+                return self._value > _SoundFontMath.non_audible
+
+            case _:
+                raise Exception("Invalid envelope stage.")
+
+    @property
+    def value(self) -> float:
+        return self._value
+    
+    @property
+    def priority(self) -> float:
+        return self._priority
+
+
+
+class _ModulationEnvelope:
+
+    _synthesizer: Synthesizer
+
+    _attack_slope: float
+    _decay_slope: float
+    _release_slope: float
+
+    _attack_start_time: float
+    _hold_start_time: float
+    _decay_start_time: float
+
+    _decay_end_time: float
+    _release_end_time: float
+
+    _sustain_level: float
+    _release_level: float
+
+    _processed_sample_count: int
+    _stage: _EnvelopeStage
+    _value: float
+
+    def __init__(self, synthesizer: Synthesizer) -> None:
+        self._synthesizer = synthesizer
+    
+    def start(self, delay: float, attack: float, hold: float, decay: float, sustain: float, release: float) -> None:
+
+        self._attack_slope = 1 / attack
+        self._decay_slope = 1 / decay
+        self._release_slope = 1 / release
+
+        self._attack_start_time = delay
+        self._hold_start_time = self._attack_start_time + attack
+        self._decay_start_time = self._hold_start_time + hold
+
+        self.decayEndTime = self._decay_start_time + decay
+        self.releaseEndTime = release
+
+        self.sustainLevel = _SoundFontMath.clamp(sustain, 0, 1)
+        self.releaseLevel = 0
+
+        self.processedSampleCount = 0
+        self.stage = _EnvelopeStage.DELAY
+        self.value = 0
+
+        self.process(0)
+
+    def release(self) -> None:
+
+        self._stage = _EnvelopeStage.RELEASE
+        self._release_end_time += float(self._processed_sample_count) / self._synthesizer.sample_rate
+        self._release_level = self._value
+    
+    def process(self, sample_count: int) -> bool:
+
+        self._processed_sample_count += sample_count
+
+        current_time = float(self._processed_sample_count) / self._synthesizer.sample_rate
+
+        while self._stage <= _EnvelopeStage.HOLD:
+
+            end_time: float
+
+            match self._stage:
+
+                case _EnvelopeStage.DELAY:
+                    end_time = self._attack_start_time
+
+                case _EnvelopeStage.ATTACK:
+                    end_time = self._hold_start_time
+
+                case _EnvelopeStage.HOLD:
+                    end_time = self._decay_start_time
+
+                case _:
+                    raise Exception("Invalid envelope stage.")
+
+            if current_time < end_time:
+                break
+            else:
+                self._stage += 1
+
+        match self._stage:
+
+            case _EnvelopeStage.DELAY:
+                self._value = 0
+                return True
+
+            case _EnvelopeStage.ATTACK:
+                self._value = self._attack_slope * (current_time - self._attack_start_time)
+                return True
+
+            case _EnvelopeStage.HOLD:
+                self._value = 1
+                return True
+
+            case _EnvelopeStage.DECAY:
+                self._value = max(self._decay_slope * (self._decay_end_time - current_time), self._sustain_level)
+                return self._value > _SoundFontMath.non_audible
+
+            case _EnvelopeStage.RELEASE:
+                self._value = max(self._release_level * self._release_slope * (self._release_end_time - current_time), 0)
+                return self._value > _SoundFontMath.non_audible
+
+            case _:
+                raise Exception("Invalid envelope stage.")
+    
+    @property
+    def value(self) -> float:
+        return self._value
