@@ -4,38 +4,40 @@ import io
 import itertools
 import math
 
+from typing import Optional
+
 
 
 class _BinaryReaderEx:
 
     @staticmethod
-    def read_int32(reader: io.BytesIO) -> int:
+    def read_int32(reader: io.BufferedReader) -> int:
         return int.from_bytes(reader.read(4), byteorder="little", signed=True)
 
     @staticmethod
-    def read_uint32(reader: io.BytesIO) -> int:
+    def read_uint32(reader: io.BufferedReader) -> int:
         return int.from_bytes(reader.read(4), byteorder="little", signed=False)
 
     @staticmethod
-    def read_int16(reader: io.BytesIO) -> int:
+    def read_int16(reader: io.BufferedReader) -> int:
         return int.from_bytes(reader.read(2), byteorder="little", signed=True)
 
     @staticmethod
-    def read_uint16(reader: io.BytesIO) -> int:
+    def read_uint16(reader: io.BufferedReader) -> int:
         return int.from_bytes(reader.read(2), byteorder="little", signed=False)
 
     @staticmethod
-    def read_int8(reader: io.BytesIO) -> int:
+    def read_int8(reader: io.BufferedReader) -> int:
         return int.from_bytes(reader.read(1), byteorder="little", signed=True)
 
     @staticmethod
-    def read_uint8(reader: io.BytesIO) -> int:
+    def read_uint8(reader: io.BufferedReader) -> int:
         return int.from_bytes(reader.read(1), byteorder="little", signed=False)
 
     @staticmethod
-    def read_four_cc(reader: io.BytesIO) -> str:
+    def read_four_cc(reader: io.BufferedReader) -> str:
 
-        data = reader.read(4)
+        data = bytearray(reader.read(4))
 
         for i, value in enumerate(data):
             if not (32 <= value and value <= 126):
@@ -44,7 +46,7 @@ class _BinaryReaderEx:
         return data.decode("ascii")
 
     @staticmethod
-    def read_fixed_length_string(reader: io.BytesIO, length: int) -> str:
+    def read_fixed_length_string(reader: io.BufferedReader, length: int) -> str:
 
         data = reader.read(length)
 
@@ -57,7 +59,7 @@ class _BinaryReaderEx:
         return data[0:actualLength].decode("ascii")
     
     @staticmethod
-    def read_int16_array(reader: io.BytesIO, size: int) -> array.array:
+    def read_int16_array(reader: io.BufferedReader, size: int) -> array.array:
 
         count = int(size / 2)
         result = array.array("h")
@@ -157,7 +159,7 @@ class SoundFontInfo:
     _comments: str = ""
     _tools: str = ""
 
-    def __init__(self, reader: io.BytesIO) -> None:
+    def __init__(self, reader: io.BufferedReader) -> None:
 
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
@@ -263,7 +265,7 @@ class _SoundFontSampleData:
     _bits_per_sample: int
     _samples: array.array
 
-    def __init__(self, reader: io.BytesIO) -> None:
+    def __init__(self, reader: io.BufferedReader) -> None:
         
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
@@ -292,7 +294,7 @@ class _SoundFontSampleData:
                 case _:
                     raise Exception("The INFO list contains an unknown ID '" + id + "'.")
         
-        if self._samples == None:
+        if self._samples is None:
             raise Exception("No valid sample data was found.")
         
     @property
@@ -376,19 +378,19 @@ class _Generator:
     _generator_type: _GeneratorType
     _value: int
 
-    def __init__(self, reader: io.BytesIO) -> None:
+    def __init__(self, reader: io.BufferedReader) -> None:
         
         self._generator_type = _GeneratorType(_BinaryReaderEx.read_uint16(reader))
         self._value = _BinaryReaderEx.read_int16(reader)
 
     @staticmethod
-    def read_from_chunk(reader: io.BytesIO, size: int) -> list:
+    def read_from_chunk(reader: io.BufferedReader, size: int) -> list["_Generator"]:
 
         if int(size % 4) != 0:
             raise Exception("The generator list is invalid.")
 
         count = int(size / 4) - 1
-        generators = list()
+        generators = list[_Generator]()
 
         for i in range(count):
             generators.append(_Generator(reader))
@@ -411,7 +413,7 @@ class _Generator:
 class _Modulator:
 
     @staticmethod
-    def discard_data(reader: io.BytesIO, size: int) -> None:
+    def discard_data(reader: io.BufferedReader, size: int) -> None:
 
         if int(size % 10) != 0:
             raise Exception("The modulator list is invalid.")
@@ -422,6 +424,7 @@ class _Modulator:
 
 class _SampleType(enum.IntEnum):
 
+    NONE = 0
     MONO = 1
     RIGHT = 2
     LEFT = 4
@@ -446,7 +449,7 @@ class SampleHeader:
     _link: int
     _sample_type: _SampleType
 
-    def __init__(self, reader: io.BytesIO) -> None:
+    def __init__(self, reader: io.BufferedReader) -> None:
         
         self._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
         self._start = _BinaryReaderEx.read_int32(reader)
@@ -457,16 +460,16 @@ class SampleHeader:
         self._original_pitch = _BinaryReaderEx.read_uint8(reader)
         self._pitch_correction = _BinaryReaderEx.read_int8(reader)
         self._link = _BinaryReaderEx.read_uint16(reader)
-        self._sample_type = _BinaryReaderEx.read_uint16(reader)
+        self._sample_type = _SampleType(_BinaryReaderEx.read_uint16(reader))
     
     @staticmethod
-    def _read_from_chunk(reader: io.BytesIO, size: int) -> list:
+    def _read_from_chunk(reader: io.BufferedReader, size: int) -> list["SampleHeader"]:
 
         if int(size % 46) != 0:
             raise Exception("The sample header list is invalid.")
         
         count = int(size / 46) - 1
-        headers = list()
+        headers = list[SampleHeader]()
 
         for i in range(count):
             headers.append(SampleHeader(reader))
@@ -507,14 +510,6 @@ class SampleHeader:
     @property
     def pitch_correction(self) -> int:
         return self._pitch_correction
-    
-    @property
-    def link(self) -> int:
-        return self._link
-    
-    @property
-    def sample_type(self) -> _SampleType:
-        return self._sample_type
 
 
 
@@ -529,13 +524,13 @@ class _ZoneInfo:
         pass
 
     @staticmethod
-    def read_from_chunk(reader: io.BytesIO, size: int) -> list:
+    def read_from_chunk(reader: io.BufferedReader, size: int) -> list["_ZoneInfo"]:
 
         if int(size % 4) != 0:
             raise Exception("The zone list is invalid.")
         
         count = int(size / 4)
-        zones = list()
+        zones = list[_ZoneInfo]()
 
         for i in range(count):
 
@@ -571,27 +566,27 @@ class _ZoneInfo:
 
 class _Zone:
 
-    _generators: list
+    _generators: list[_Generator]
 
     def __init__(self) -> None:
         pass
 
     @staticmethod
-    def create(infos: list, generators: list) -> list:
+    def create(infos: list[_ZoneInfo], generators: list[_Generator]) -> list["_Zone"]:
 
         if len(infos) <= 1:
             raise Exception("No valid zone was found.")
         
         # The last one is the terminator.
         count = len(infos) - 1
-        zones = list()
+        zones = list[_Zone]()
 
         for i in range(count):
 
             info: _ZoneInfo = infos[i]
 
             zone = _Zone()
-            zone._generators = list()
+            zone._generators = list[_Generator]()
             for j in range(info.generator_count):
                 zone._generators.append(generators[info.generator_index + j])
             
@@ -600,7 +595,7 @@ class _Zone:
         return zones
     
     @property
-    def generators(self) -> list:
+    def generators(self) -> list[_Generator]:
         return self._generators
 
 
@@ -620,13 +615,13 @@ class _PresetInfo:
         pass
 
     @staticmethod
-    def read_from_chunk(reader: io.BytesIO, size: int) -> list:
+    def read_from_chunk(reader: io.BufferedReader, size: int) -> list["_PresetInfo"]:
 
         if int(size % 38) != 0:
             raise Exception("The preset list is invalid.")
     
         count = int(size / 38)
-        presets = list()
+        presets = list[_PresetInfo]()
 
         for i in range(count):
 
@@ -689,13 +684,13 @@ class _InstrumentInfo:
         pass
 
     @staticmethod
-    def read_from_chunk(reader: io.BytesIO, size: int) -> list:
+    def read_from_chunk(reader: io.BufferedReader, size: int) -> list["_InstrumentInfo"]:
 
         if int(size % 22) != 0:
             raise Exception("The instrument list is invalid.")
     
         count = int(size / 22)
-        instruments = list()
+        instruments = list[_InstrumentInfo]()
 
         for i in range(count):
 
@@ -726,9 +721,9 @@ class _InstrumentInfo:
 class Instrument:
 
     _name: str
-    _regions: list
+    _regions: list["InstrumentRegion"]
 
-    def __init__(self, info: _InstrumentInfo, zones: list, samples: list) -> None:
+    def __init__(self, info: _InstrumentInfo, zones: list[_Zone], samples: list[SampleHeader]) -> None:
         
         self._name = info.name
 
@@ -741,14 +736,14 @@ class Instrument:
         self._regions = InstrumentRegion._create(self, zone_span, samples)
 
     @staticmethod
-    def _create(infos: list, zones: list, samples: list):
+    def _create(infos: list[_InstrumentInfo], zones: list[_Zone], samples: list[SampleHeader]) -> list["Instrument"]:
 
         if len(infos) <= 1:
             raise Exception("No valid instrument was found.")
         
         # The last one is the terminator.
         count = len(infos) - 1
-        instruments = list()
+        instruments = list[Instrument]()
 
         for i in range(count):
             instruments.append(Instrument(infos[i], zones, samples))
@@ -760,7 +755,7 @@ class Instrument:
         return self._name
     
     @property
-    def regions(self) -> list:
+    def regions(self) -> list["InstrumentRegion"]:
         return self._regions
 
 
@@ -778,7 +773,7 @@ class InstrumentRegion:
     _sample: SampleHeader
     _gs: array.array
 
-    def __init__(self, instrument: Instrument, global_generators: list, local_generators: list, samples: list) -> None:
+    def __init__(self, instrument: Instrument, global_generators: Optional[list[_Generator]], local_generators: Optional[list[_Generator]], samples: list[SampleHeader]) -> None:
         
         self._gs = array.array("h", itertools.repeat(0, 61))
         self._gs[_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY] = 13500
@@ -801,40 +796,40 @@ class InstrumentRegion:
         self._gs[_GeneratorType.SCALE_TUNING] = 100
         self._gs[_GeneratorType.OVERRIDING_ROOT_KEY] = -1
 
-        if global_generators != None:
+        if global_generators is not None:
             for parameter in global_generators:
                 self._set_parameter(parameter)
         
-        if local_generators != None:
+        if local_generators is not None:
             for parameter in local_generators:
                 self._set_parameter(parameter)
         
         id = self._gs[_GeneratorType.SAMPLE_ID]
         if not (0 <= id and id < len(samples)):
-            raise Exception("The instrument '" + instrument.name + "' contains an invalid sample ID '" + id + "'.")
+            raise Exception("The instrument '" + instrument.name + "' contains an invalid sample ID '" + str(id) + "'.")
         self._sample = samples[id]
     
     @staticmethod
-    def _create(instrument: Instrument, zones: list, samples: list) -> list:
+    def _create(instrument: Instrument, zones: list[_Zone], samples: list[SampleHeader]) -> list["InstrumentRegion"]:
 
-        global_zone: _Zone = None
+        global_zone: Optional[_Zone] = None
 
         # Is the first one the global zone?
         if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != _GeneratorType.SAMPLE_ID:
             # The first one is the global zone.
             global_zone = zones[0]
         
-        if global_zone != None:
+        if global_zone is not None:
             # The global zone is regarded as the base setting of subsequent zones.
             count = len(zones) - 1
-            regions = list()
+            regions = list[InstrumentRegion]()
             for i in range(count):
                 regions.append(InstrumentRegion(instrument, global_zone.generators, zones[i + 1].generators, samples))
             return regions
         else:
             # No global zone.
             count = len(zones)
-            regions = list()
+            regions = list[InstrumentRegion]()
             for i in range(count):
                 regions.append(InstrumentRegion(instrument, None, zones[i].generators, samples))
             return regions
@@ -1066,9 +1061,9 @@ class Preset:
     _library: int
     _genre: int
     _morphology: int
-    _regions: list
+    _regions: list["PresetRegion"]
 
-    def __init__(self, info: _PresetInfo, zones: list, instruments: list) -> None:
+    def __init__(self, info: _PresetInfo, zones: list[_Zone], instruments: list[Instrument]) -> None:
         
         self._name = info.name
         self._patch_number = info.patch_number
@@ -1086,14 +1081,14 @@ class Preset:
         self._regions = PresetRegion._create(self, zone_span, instruments)
 
     @staticmethod
-    def _create(infos: list, zones: list, instruments: list) -> list:
+    def _create(infos: list[_PresetInfo], zones: list[_Zone], instruments: list[Instrument]) -> list["Preset"]:
 
         if len(infos) <= 1:
             raise Exception("No valid preset was found.")
         
         # The last one is the terminator.
         count = len(infos) - 1
-        presets = list()
+        presets = list[Preset]()
 
         for i in range(count):
             presets.append(Preset(infos[i], zones, instruments))
@@ -1125,7 +1120,7 @@ class Preset:
         return self._morphology
     
     @property
-    def regions(self) -> list:
+    def regions(self) -> list["PresetRegion"]:
         return self._regions
 
 
@@ -1135,46 +1130,46 @@ class PresetRegion:
     _instrument: Instrument
     _gs: array.array
 
-    def __init__(self, preset: Preset, global_generators: list, local_generators: list, instruments: list) -> None:
+    def __init__(self, preset: Preset, global_generators: Optional[list[_Generator]], local_generators: Optional[list[_Generator]], instruments: list[Instrument]) -> None:
         
         self._gs = array.array("h", itertools.repeat(0, 61))
         self._gs[_GeneratorType.KEY_RANGE] = 0x7F00
         self._gs[_GeneratorType.VELOCITY_RANGE] = 0x7F00
 
-        if global_generators != None:
+        if global_generators is not None:
             for parameter in global_generators:
                 self._set_parameter(parameter)
         
-        if local_generators != None:
+        if local_generators is not None:
             for parameter in local_generators:
                 self._set_parameter(parameter)
         
         id = self._gs[_GeneratorType.INSTRUMENT]
         if not (0 <= id and id < len(instruments)):
-            raise Exception("The preset '" + preset.name + "' contains an invalid instrument ID '" + id + "'.")
+            raise Exception("The preset '" + preset.name + "' contains an invalid instrument ID '" + str(id) + "'.")
         self._instrument = instruments[id]
     
     @staticmethod
-    def _create(preset: Preset, zones: list, instruments: list) -> list:
+    def _create(preset: Preset, zones: list[_Zone], instruments: list[Instrument]) -> list["PresetRegion"]:
 
-        global_zone: _Zone = None
+        global_zone: Optional[_Zone] = None
 
         # Is the first one the global zone?
         if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != _GeneratorType.INSTRUMENT:
             # The first one is the global zone.
             global_zone = zones[0]
         
-        if global_zone != None:
+        if global_zone is not None:
             # The global zone is regarded as the base setting of subsequent zones.
             count = len(zones) - 1
-            regions = list()
+            regions = list[PresetRegion]()
             for i in range(count):
                 regions.append(PresetRegion(preset, global_zone.generators, zones[i + 1].generators, instruments))
             return regions
         else:
             # No global zone.
             count = len(zones)
-            regions = list()
+            regions = list[PresetRegion]()
             for i in range(count):
                 regions.append(PresetRegion(preset, None, zones[i].generators, instruments))
             return regions
@@ -1356,11 +1351,11 @@ class PresetRegion:
 
 class _SoundFontParameters:
 
-    _sample_headers: list
-    _presets: list
-    _instruments: list
+    _sample_headers: list[SampleHeader]
+    _presets: list[Preset]
+    _instruments: list[Instrument]
 
-    def __init__(self, reader: io.BytesIO) -> None:
+    def __init__(self, reader: io.BufferedReader) -> None:
         
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
@@ -1372,13 +1367,13 @@ class _SoundFontParameters:
         if list_type != "pdta":
             raise Exception("The type of the LIST chunk must be 'pdta', but was '" + list_type + "'.")
 
-        preset_infos: list = None
-        preset_bag: list = None
-        preset_generators: list = None
-        instrument_infos: list = None
-        instrument_bag: list = None
-        instrument_generators: list = None
-        sample_headers: list = None
+        preset_infos: Optional[list[_PresetInfo]] = None
+        preset_bag: Optional[list[_ZoneInfo]] = None
+        preset_generators: Optional[list[_Generator]] = None
+        instrument_infos: Optional[list[_InstrumentInfo]] = None
+        instrument_bag: Optional[list[_ZoneInfo]] = None
+        instrument_generators: Optional[list[_Generator]] = None
+        sample_headers: Optional[list[SampleHeader]] = None
 
         while reader.tell() < end:
 
@@ -1417,25 +1412,25 @@ class _SoundFontParameters:
                 case _:
                     raise Exception("The INFO list contains an unknown ID '" + id + "'.")
 
-        if preset_infos == None:
+        if preset_infos is None:
             raise Exception("The PHDR sub-chunk was not found.")
         
-        if preset_bag == None:
+        if preset_bag is None:
             raise Exception("The PBAG sub-chunk was not found.")
         
-        if preset_generators == None:
+        if preset_generators is None:
             raise Exception("The PGEN sub-chunk was not found.")
         
-        if instrument_infos == None:
+        if instrument_infos is None:
             raise Exception("The INST sub-chunk was not found.")
         
-        if instrument_bag == None:
+        if instrument_bag is None:
             raise Exception("The IBAG sub-chunk was not found.")
         
-        if instrument_generators == None:
+        if instrument_generators is None:
             raise Exception("The IGEN sub-chunk was not found.")
         
-        if sample_headers == None:
+        if sample_headers is None:
             raise Exception("The SHDR sub-chunk was not found.")
 
         self._sample_headers = sample_headers
@@ -1447,15 +1442,15 @@ class _SoundFontParameters:
         self._presets = Preset._create(preset_infos, preset_zones, self._instruments)
 
     @property
-    def sample_headers(self) -> list:
+    def sample_headers(self) -> list[SampleHeader]:
         return self._sample_headers
     
     @property
-    def presets(self) -> list:
+    def presets(self) -> list[Preset]:
         return self._presets
     
     @property
-    def instruments(self) -> list:
+    def instruments(self) -> list[Instrument]:
         return self._instruments
 
 
@@ -1465,11 +1460,11 @@ class SoundFont:
     _info: SoundFontInfo
     _bits_per_sample: int
     _wave_data: array.array
-    _sample_headers: list
-    _presets: list
-    _instruments: list
+    _sample_headers: list[SampleHeader]
+    _presets: list[Preset]
+    _instruments: list[Instrument]
 
-    def __init__(self, reader: io.BytesIO) -> None:
+    def __init__(self, reader: io.BufferedReader) -> None:
 
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "RIFF":
@@ -1501,15 +1496,15 @@ class SoundFont:
         return self._wave_data
     
     @property
-    def sample_headers(self) -> list:
+    def sample_headers(self) -> list[SampleHeader]:
         return self._sample_headers
     
     @property
-    def presets(self) -> list:
+    def presets(self) -> list[Preset]:
         return self._presets
     
     @property
-    def instruments(self) -> list:
+    def instruments(self) -> list[Instrument]:
         return self._instruments
 
 
@@ -1930,7 +1925,7 @@ class _VolumeEnvelope:
             if current_time < end_time:
                 break
             else:
-                self._stage += 1
+                self._stage = _EnvelopeStage(self._stage.value + 1)
 
         match self._stage:
 
@@ -1952,12 +1947,12 @@ class _VolumeEnvelope:
             case _EnvelopeStage.DECAY:
                 self._value = max(_SoundFontMath.exp_cutoff(self._decay_slope * (current_time - self._decay_start_time)), self._sustain_level)
                 self._priority = 1 + self._value
-                return self._value > _SoundFontMath.non_audible
+                return self._value > _SoundFontMath.non_audible()
 
             case _EnvelopeStage.RELEASE:
                 self._value = self._release_level * _SoundFontMath.exp_cutoff(self._release_slope * (current_time - self._release_start_time))
                 self._priority = self._value
-                return self._value > _SoundFontMath.non_audible
+                return self._value > _SoundFontMath.non_audible()
 
             case _:
                 raise Exception("Invalid envelope stage.")
@@ -2007,15 +2002,15 @@ class _ModulationEnvelope:
         self._hold_start_time = self._attack_start_time + attack
         self._decay_start_time = self._hold_start_time + hold
 
-        self.decayEndTime = self._decay_start_time + decay
-        self.releaseEndTime = release
+        self._decay_end_time = self._decay_start_time + decay
+        self._release_end_time = release
 
-        self.sustainLevel = _SoundFontMath.clamp(sustain, 0, 1)
-        self.releaseLevel = 0
+        self._sustain_level = _SoundFontMath.clamp(sustain, 0, 1)
+        self._release_level = 0
 
-        self.processedSampleCount = 0
-        self.stage = _EnvelopeStage.DELAY
-        self.value = 0
+        self._processed_sample_count = 0
+        self._stage = _EnvelopeStage.DELAY
+        self._value = 0
 
         self.process(0)
 
@@ -2052,7 +2047,7 @@ class _ModulationEnvelope:
             if current_time < end_time:
                 break
             else:
-                self._stage += 1
+                self._stage = _EnvelopeStage(self._stage.value + 1)
 
         match self._stage:
 
@@ -2070,11 +2065,11 @@ class _ModulationEnvelope:
 
             case _EnvelopeStage.DECAY:
                 self._value = max(self._decay_slope * (self._decay_end_time - current_time), self._sustain_level)
-                return self._value > _SoundFontMath.non_audible
+                return self._value > _SoundFontMath.non_audible()
 
             case _EnvelopeStage.RELEASE:
                 self._value = max(self._release_level * self._release_slope * (self._release_end_time - current_time), 0)
-                return self._value > _SoundFontMath.non_audible
+                return self._value > _SoundFontMath.non_audible()
 
             case _:
                 raise Exception("Invalid envelope stage.")
