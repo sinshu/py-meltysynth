@@ -1,9 +1,12 @@
-import array
-import enum
 import io
 import itertools
 import math
 
+from array import array
+from collections.abc import MutableSequence
+from collections.abc import Sequence
+from enum import IntEnum
+from io import BufferedReader
 from typing import Optional
 
 
@@ -11,31 +14,31 @@ from typing import Optional
 class _BinaryReaderEx:
 
     @staticmethod
-    def read_int32(reader: io.BufferedReader) -> int:
+    def read_int32(reader: BufferedReader) -> int:
         return int.from_bytes(reader.read(4), byteorder="little", signed=True)
 
     @staticmethod
-    def read_uint32(reader: io.BufferedReader) -> int:
+    def read_uint32(reader: BufferedReader) -> int:
         return int.from_bytes(reader.read(4), byteorder="little", signed=False)
 
     @staticmethod
-    def read_int16(reader: io.BufferedReader) -> int:
+    def read_int16(reader: BufferedReader) -> int:
         return int.from_bytes(reader.read(2), byteorder="little", signed=True)
 
     @staticmethod
-    def read_uint16(reader: io.BufferedReader) -> int:
+    def read_uint16(reader: BufferedReader) -> int:
         return int.from_bytes(reader.read(2), byteorder="little", signed=False)
 
     @staticmethod
-    def read_int8(reader: io.BufferedReader) -> int:
+    def read_int8(reader: BufferedReader) -> int:
         return int.from_bytes(reader.read(1), byteorder="little", signed=True)
 
     @staticmethod
-    def read_uint8(reader: io.BufferedReader) -> int:
+    def read_uint8(reader: BufferedReader) -> int:
         return int.from_bytes(reader.read(1), byteorder="little", signed=False)
 
     @staticmethod
-    def read_four_cc(reader: io.BufferedReader) -> str:
+    def read_four_cc(reader: BufferedReader) -> str:
 
         data = bytearray(reader.read(4))
 
@@ -46,7 +49,7 @@ class _BinaryReaderEx:
         return data.decode("ascii")
 
     @staticmethod
-    def read_fixed_length_string(reader: io.BufferedReader, length: int) -> str:
+    def read_fixed_length_string(reader: BufferedReader, length: int) -> str:
 
         data = reader.read(length)
 
@@ -59,10 +62,10 @@ class _BinaryReaderEx:
         return data[0:actualLength].decode("ascii")
     
     @staticmethod
-    def read_int16_array(reader: io.BufferedReader, size: int) -> array.array:
+    def read_int16_array(reader: BufferedReader, size: int) -> Sequence[int]:
 
         count = int(size / 2)
-        result = array.array("h")
+        result = array("h")
         result.fromfile(reader, count)
         
         return result
@@ -159,7 +162,7 @@ class SoundFontInfo:
     _comments: str = ""
     _tools: str = ""
 
-    def __init__(self, reader: io.BufferedReader) -> None:
+    def __init__(self, reader: BufferedReader) -> None:
 
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
@@ -263,9 +266,9 @@ class SoundFontInfo:
 class _SoundFontSampleData:
 
     _bits_per_sample: int
-    _samples: array.array
+    _samples: Sequence[int]
 
-    def __init__(self, reader: io.BufferedReader) -> None:
+    def __init__(self, reader: BufferedReader) -> None:
         
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
@@ -302,12 +305,12 @@ class _SoundFontSampleData:
         return self._bits_per_sample
 
     @property
-    def samples(self) -> array.array:
+    def samples(self) -> Sequence[int]:
         return self._samples
 
 
 
-class _GeneratorType(enum.IntEnum):
+class _GeneratorType(IntEnum):
 
     START_ADDRESS_OFFSET = 0
     END_ADDRESS_OFFSET = 1
@@ -378,13 +381,13 @@ class _Generator:
     _generator_type: _GeneratorType
     _value: int
 
-    def __init__(self, reader: io.BufferedReader) -> None:
+    def __init__(self, reader: BufferedReader) -> None:
         
         self._generator_type = _GeneratorType(_BinaryReaderEx.read_uint16(reader))
         self._value = _BinaryReaderEx.read_int16(reader)
 
     @staticmethod
-    def read_from_chunk(reader: io.BufferedReader, size: int) -> list["_Generator"]:
+    def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_Generator"]:
 
         if int(size % 4) != 0:
             raise Exception("The generator list is invalid.")
@@ -392,7 +395,7 @@ class _Generator:
         count = int(size / 4) - 1
         generators = list[_Generator]()
 
-        for i in range(count):
+        for _ in range(count):
             generators.append(_Generator(reader))
 
         # The last one is the terminator.
@@ -413,7 +416,7 @@ class _Generator:
 class _Modulator:
 
     @staticmethod
-    def discard_data(reader: io.BufferedReader, size: int) -> None:
+    def discard_data(reader: BufferedReader, size: int) -> None:
 
         if int(size % 10) != 0:
             raise Exception("The modulator list is invalid.")
@@ -422,7 +425,7 @@ class _Modulator:
 
 
 
-class _SampleType(enum.IntEnum):
+class _SampleType(IntEnum):
 
     NONE = 0
     MONO = 1
@@ -449,7 +452,7 @@ class SampleHeader:
     _link: int
     _sample_type: _SampleType
 
-    def __init__(self, reader: io.BufferedReader) -> None:
+    def __init__(self, reader: BufferedReader) -> None:
         
         self._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
         self._start = _BinaryReaderEx.read_int32(reader)
@@ -463,7 +466,7 @@ class SampleHeader:
         self._sample_type = _SampleType(_BinaryReaderEx.read_uint16(reader))
     
     @staticmethod
-    def _read_from_chunk(reader: io.BufferedReader, size: int) -> list["SampleHeader"]:
+    def _read_from_chunk(reader: BufferedReader, size: int) -> Sequence["SampleHeader"]:
 
         if int(size % 46) != 0:
             raise Exception("The sample header list is invalid.")
@@ -471,7 +474,7 @@ class SampleHeader:
         count = int(size / 46) - 1
         headers = list[SampleHeader]()
 
-        for i in range(count):
+        for _ in range(count):
             headers.append(SampleHeader(reader))
         
         # The last one is the terminator.
@@ -524,7 +527,7 @@ class _ZoneInfo:
         pass
 
     @staticmethod
-    def read_from_chunk(reader: io.BufferedReader, size: int) -> list["_ZoneInfo"]:
+    def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_ZoneInfo"]:
 
         if int(size % 4) != 0:
             raise Exception("The zone list is invalid.")
@@ -566,13 +569,13 @@ class _ZoneInfo:
 
 class _Zone:
 
-    _generators: list[_Generator]
+    _generators: Sequence[_Generator]
 
     def __init__(self) -> None:
         pass
 
     @staticmethod
-    def create(infos: list[_ZoneInfo], generators: list[_Generator]) -> list["_Zone"]:
+    def create(infos: Sequence[_ZoneInfo], generators: Sequence[_Generator]) -> Sequence["_Zone"]:
 
         if len(infos) <= 1:
             raise Exception("No valid zone was found.")
@@ -595,7 +598,7 @@ class _Zone:
         return zones
     
     @property
-    def generators(self) -> list[_Generator]:
+    def generators(self) -> Sequence[_Generator]:
         return self._generators
 
 
@@ -615,7 +618,7 @@ class _PresetInfo:
         pass
 
     @staticmethod
-    def read_from_chunk(reader: io.BufferedReader, size: int) -> list["_PresetInfo"]:
+    def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_PresetInfo"]:
 
         if int(size % 38) != 0:
             raise Exception("The preset list is invalid.")
@@ -684,7 +687,7 @@ class _InstrumentInfo:
         pass
 
     @staticmethod
-    def read_from_chunk(reader: io.BufferedReader, size: int) -> list["_InstrumentInfo"]:
+    def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_InstrumentInfo"]:
 
         if int(size % 22) != 0:
             raise Exception("The instrument list is invalid.")
@@ -721,9 +724,9 @@ class _InstrumentInfo:
 class Instrument:
 
     _name: str
-    _regions: list["InstrumentRegion"]
+    _regions: Sequence["InstrumentRegion"]
 
-    def __init__(self, info: _InstrumentInfo, zones: list[_Zone], samples: list[SampleHeader]) -> None:
+    def __init__(self, info: _InstrumentInfo, zones: Sequence[_Zone], samples: Sequence[SampleHeader]) -> None:
         
         self._name = info.name
 
@@ -736,7 +739,7 @@ class Instrument:
         self._regions = InstrumentRegion._create(self, zone_span, samples)
 
     @staticmethod
-    def _create(infos: list[_InstrumentInfo], zones: list[_Zone], samples: list[SampleHeader]) -> list["Instrument"]:
+    def _create(infos: Sequence[_InstrumentInfo], zones: Sequence[_Zone], samples: Sequence[SampleHeader]) -> Sequence["Instrument"]:
 
         if len(infos) <= 1:
             raise Exception("No valid instrument was found.")
@@ -755,12 +758,12 @@ class Instrument:
         return self._name
     
     @property
-    def regions(self) -> list["InstrumentRegion"]:
+    def regions(self) -> Sequence["InstrumentRegion"]:
         return self._regions
 
 
 
-class LoopMode(enum.IntEnum):
+class LoopMode(IntEnum):
 
     NO_LOOP = 0
     CONTINUOUS = 1
@@ -771,11 +774,11 @@ class LoopMode(enum.IntEnum):
 class InstrumentRegion:
 
     _sample: SampleHeader
-    _gs: array.array
+    _gs: MutableSequence[int]
 
-    def __init__(self, instrument: Instrument, global_generators: Optional[list[_Generator]], local_generators: Optional[list[_Generator]], samples: list[SampleHeader]) -> None:
+    def __init__(self, instrument: Instrument, global_generators: Optional[Sequence[_Generator]], local_generators: Optional[Sequence[_Generator]], samples: Sequence[SampleHeader]) -> None:
         
-        self._gs = array.array("h", itertools.repeat(0, 61))
+        self._gs = array("h", itertools.repeat(0, 61))
         self._gs[_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY] = 13500
         self._gs[_GeneratorType.DELAY_MODULATION_LFO] = -12000
         self._gs[_GeneratorType.DELAY_VIBRATO_LFO] = -12000
@@ -810,7 +813,7 @@ class InstrumentRegion:
         self._sample = samples[id]
     
     @staticmethod
-    def _create(instrument: Instrument, zones: list[_Zone], samples: list[SampleHeader]) -> list["InstrumentRegion"]:
+    def _create(instrument: Instrument, zones: Sequence[_Zone], samples: Sequence[SampleHeader]) -> Sequence["InstrumentRegion"]:
 
         global_zone: Optional[_Zone] = None
 
@@ -1061,9 +1064,9 @@ class Preset:
     _library: int
     _genre: int
     _morphology: int
-    _regions: list["PresetRegion"]
+    _regions: Sequence["PresetRegion"]
 
-    def __init__(self, info: _PresetInfo, zones: list[_Zone], instruments: list[Instrument]) -> None:
+    def __init__(self, info: _PresetInfo, zones: Sequence[_Zone], instruments: Sequence[Instrument]) -> None:
         
         self._name = info.name
         self._patch_number = info.patch_number
@@ -1081,7 +1084,7 @@ class Preset:
         self._regions = PresetRegion._create(self, zone_span, instruments)
 
     @staticmethod
-    def _create(infos: list[_PresetInfo], zones: list[_Zone], instruments: list[Instrument]) -> list["Preset"]:
+    def _create(infos: Sequence[_PresetInfo], zones: Sequence[_Zone], instruments: Sequence[Instrument]) -> Sequence["Preset"]:
 
         if len(infos) <= 1:
             raise Exception("No valid preset was found.")
@@ -1120,7 +1123,7 @@ class Preset:
         return self._morphology
     
     @property
-    def regions(self) -> list["PresetRegion"]:
+    def regions(self) -> Sequence["PresetRegion"]:
         return self._regions
 
 
@@ -1128,11 +1131,11 @@ class Preset:
 class PresetRegion:
 
     _instrument: Instrument
-    _gs: array.array
+    _gs: MutableSequence[int]
 
-    def __init__(self, preset: Preset, global_generators: Optional[list[_Generator]], local_generators: Optional[list[_Generator]], instruments: list[Instrument]) -> None:
+    def __init__(self, preset: Preset, global_generators: Optional[Sequence[_Generator]], local_generators: Optional[Sequence[_Generator]], instruments: Sequence[Instrument]) -> None:
         
-        self._gs = array.array("h", itertools.repeat(0, 61))
+        self._gs = array("h", itertools.repeat(0, 61))
         self._gs[_GeneratorType.KEY_RANGE] = 0x7F00
         self._gs[_GeneratorType.VELOCITY_RANGE] = 0x7F00
 
@@ -1150,7 +1153,7 @@ class PresetRegion:
         self._instrument = instruments[id]
     
     @staticmethod
-    def _create(preset: Preset, zones: list[_Zone], instruments: list[Instrument]) -> list["PresetRegion"]:
+    def _create(preset: Preset, zones: Sequence[_Zone], instruments: Sequence[Instrument]) -> Sequence["PresetRegion"]:
 
         global_zone: Optional[_Zone] = None
 
@@ -1351,11 +1354,11 @@ class PresetRegion:
 
 class _SoundFontParameters:
 
-    _sample_headers: list[SampleHeader]
-    _presets: list[Preset]
-    _instruments: list[Instrument]
+    _sample_headers: Sequence[SampleHeader]
+    _presets: Sequence[Preset]
+    _instruments: Sequence[Instrument]
 
-    def __init__(self, reader: io.BufferedReader) -> None:
+    def __init__(self, reader: BufferedReader) -> None:
         
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
@@ -1367,13 +1370,13 @@ class _SoundFontParameters:
         if list_type != "pdta":
             raise Exception("The type of the LIST chunk must be 'pdta', but was '" + list_type + "'.")
 
-        preset_infos: Optional[list[_PresetInfo]] = None
-        preset_bag: Optional[list[_ZoneInfo]] = None
-        preset_generators: Optional[list[_Generator]] = None
-        instrument_infos: Optional[list[_InstrumentInfo]] = None
-        instrument_bag: Optional[list[_ZoneInfo]] = None
-        instrument_generators: Optional[list[_Generator]] = None
-        sample_headers: Optional[list[SampleHeader]] = None
+        preset_infos: Optional[Sequence[_PresetInfo]] = None
+        preset_bag: Optional[Sequence[_ZoneInfo]] = None
+        preset_generators: Optional[Sequence[_Generator]] = None
+        instrument_infos: Optional[Sequence[_InstrumentInfo]] = None
+        instrument_bag: Optional[Sequence[_ZoneInfo]] = None
+        instrument_generators: Optional[Sequence[_Generator]] = None
+        sample_headers: Optional[Sequence[SampleHeader]] = None
 
         while reader.tell() < end:
 
@@ -1442,15 +1445,15 @@ class _SoundFontParameters:
         self._presets = Preset._create(preset_infos, preset_zones, self._instruments)
 
     @property
-    def sample_headers(self) -> list[SampleHeader]:
+    def sample_headers(self) -> Sequence[SampleHeader]:
         return self._sample_headers
     
     @property
-    def presets(self) -> list[Preset]:
+    def presets(self) -> Sequence[Preset]:
         return self._presets
     
     @property
-    def instruments(self) -> list[Instrument]:
+    def instruments(self) -> Sequence[Instrument]:
         return self._instruments
 
 
@@ -1459,18 +1462,18 @@ class SoundFont:
 
     _info: SoundFontInfo
     _bits_per_sample: int
-    _wave_data: array.array
-    _sample_headers: list[SampleHeader]
-    _presets: list[Preset]
-    _instruments: list[Instrument]
+    _wave_data: Sequence[int]
+    _sample_headers: Sequence[SampleHeader]
+    _presets: Sequence[Preset]
+    _instruments: Sequence[Instrument]
 
-    def __init__(self, reader: io.BufferedReader) -> None:
+    def __init__(self, reader: BufferedReader) -> None:
 
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "RIFF":
             raise Exception("The RIFF chunk was not found.")
 
-        size = _BinaryReaderEx.read_uint32(reader)
+        _BinaryReaderEx.read_uint32(reader)
 
         form_type = _BinaryReaderEx.read_four_cc(reader)
         if form_type != "sfbk":
@@ -1492,19 +1495,19 @@ class SoundFont:
         return self._info
     
     @property
-    def wave_data(self) -> array.array:
+    def wave_data(self) -> Sequence[int]:
         return self._wave_data
     
     @property
-    def sample_headers(self) -> list[SampleHeader]:
+    def sample_headers(self) -> Sequence[SampleHeader]:
         return self._sample_headers
     
     @property
-    def presets(self) -> list[Preset]:
+    def presets(self) -> Sequence[Preset]:
         return self._presets
     
     @property
-    def instruments(self) -> list[Instrument]:
+    def instruments(self) -> Sequence[Instrument]:
         return self._instruments
 
 
@@ -1726,7 +1729,7 @@ class _Oscillator:
 
     _synthesizer: Synthesizer
 
-    _data: array.array
+    _data: Sequence[int]
     _loop_mode: LoopMode
     _sample_rate: int
     _start: int
@@ -1746,7 +1749,7 @@ class _Oscillator:
     def __init__(self, synthesizer: Synthesizer) -> None:
         self._synthesizer = synthesizer
 
-    def start(self, data: array.array, loop_mode: LoopMode, sample_rate: int, start: int, end: int, start_loop: int, end_loop: int, root_key: int, coarse_tune: int, fine_tune: int, scale_tuning: int) -> None:
+    def start(self, data: Sequence[int], loop_mode: LoopMode, sample_rate: int, start: int, end: int, start_loop: int, end_loop: int, root_key: int, coarse_tune: int, fine_tune: int, scale_tuning: int) -> None:
 
         self._data = data
         self._loop_mode = loop_mode
@@ -1773,20 +1776,20 @@ class _Oscillator:
         if self._loop_mode == LoopMode.LOOP_UNTIL_NOTE_OFF:
             self._looping = False
     
-    def process(self, block: array.array, pitch: float) -> bool:
+    def process(self, block: MutableSequence[float], pitch: float) -> bool:
 
         pitch_change = self._pitch_change_scale * (pitch - self._root_key) + self._tune
         pitch_ratio = self._sample_rate_ratio * math.pow(2.0, pitch_change / 12.0)
         return self.fill_block(block, pitch_ratio)
     
-    def fill_block(self, block: array.array, pitch_ratio: float) -> bool:
+    def fill_block(self, block: MutableSequence[float], pitch_ratio: float) -> bool:
 
         if self._looping:
             return self.fill_block_continuous(block, pitch_ratio)
         else:
             return self.fill_block_no_loop(block, pitch_ratio)
     
-    def fill_block_no_loop(self, block: array.array, pitch_ratio: float) -> bool:
+    def fill_block_no_loop(self, block: MutableSequence[float], pitch_ratio: float) -> bool:
 
         for t in range(len(block)):
 
@@ -1809,7 +1812,7 @@ class _Oscillator:
 
         return True
     
-    def fill_block_continuous(self, block: array.array, pitch_ratio: float) -> bool:
+    def fill_block_continuous(self, block: MutableSequence[float], pitch_ratio: float) -> bool:
 
         end_loop_position = float(self._end_loop)
 
@@ -1837,7 +1840,7 @@ class _Oscillator:
 
 
 
-class _EnvelopeStage(enum.IntEnum):
+class _EnvelopeStage(IntEnum):
 
     DELAY = 0
     ATTACK = 1
@@ -2144,7 +2147,7 @@ class _Lfo:
 class _RegionEx:
 
     @staticmethod
-    def start_oscillator(oscillator: _Oscillator, data: array.array, region: _RegionPair) -> None:
+    def start_oscillator(oscillator: _Oscillator, data: Sequence[int], region: _RegionPair) -> None:
         
         sample_rate = region.instrument.sample.sample_rate
         loop_mode = region.sample_modes
