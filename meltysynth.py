@@ -1719,18 +1719,9 @@ class _RegionPair:
 
 
 
-class Synthesizer:
-    sample_rate: int
-    block_size: int
-    sound_font: SoundFont
-    channels: Sequence["_Channel"]
-    minimum_voice_duration: int
-
-
-
 class _Oscillator:
 
-    _synthesizer: Synthesizer
+    _synthesizer: "Synthesizer"
 
     _data: Sequence[int]
     _loop_mode: LoopMode
@@ -1749,7 +1740,7 @@ class _Oscillator:
 
     _position: float
 
-    def __init__(self, synthesizer: Synthesizer) -> None:
+    def __init__(self, synthesizer: "Synthesizer") -> None:
         self._synthesizer = synthesizer
 
     def start(self, data: Sequence[int], loop_mode: LoopMode, sample_rate: int, start: int, end: int, start_loop: int, end_loop: int, root_key: int, coarse_tune: int, fine_tune: int, scale_tuning: int) -> None:
@@ -1855,7 +1846,7 @@ class _EnvelopeStage(IntEnum):
 
 class _VolumeEnvelope:
 
-    _synthesizer: Synthesizer
+    _synthesizer: "Synthesizer"
 
     _attack_slope: float
     _decay_slope: float
@@ -1875,7 +1866,7 @@ class _VolumeEnvelope:
 
     _priority: float
 
-    def __init__(self, synthesizer: Synthesizer) -> None:
+    def __init__(self, synthesizer: "Synthesizer") -> None:
         self._synthesizer = synthesizer
     
     def start(self, delay: float, attack: float, hold: float, decay: float, sustain: float, release: float) -> None:
@@ -1975,7 +1966,7 @@ class _VolumeEnvelope:
 
 class _ModulationEnvelope:
 
-    _synthesizer: Synthesizer
+    _synthesizer: "Synthesizer"
 
     _attack_slope: float
     _decay_slope: float
@@ -1995,7 +1986,7 @@ class _ModulationEnvelope:
     _stage: _EnvelopeStage
     _value: float
 
-    def __init__(self, synthesizer: Synthesizer) -> None:
+    def __init__(self, synthesizer: "Synthesizer") -> None:
         self._synthesizer = synthesizer
     
     def start(self, delay: float, attack: float, hold: float, decay: float, sustain: float, release: float) -> None:
@@ -2088,7 +2079,7 @@ class _ModulationEnvelope:
 
 class _Lfo:
 
-    _synthesizer: Synthesizer
+    _synthesizer: "Synthesizer"
 
     _active: bool
 
@@ -2098,7 +2089,7 @@ class _Lfo:
     _processed_sample_count: int
     _value: float
 
-    def __init__(self, synthesizer: Synthesizer) -> None:
+    def __init__(self, synthesizer: "Synthesizer") -> None:
         self._synthesizer = synthesizer
     
     def start(self, delay: float, frequency: float) -> None:
@@ -2205,7 +2196,7 @@ class _RegionEx:
 
 class _BiQuadFilter:
 
-    _synthesizer: Synthesizer
+    _synthesizer: "Synthesizer"
 
     _resonance_peak_offset: float
 
@@ -2222,7 +2213,7 @@ class _BiQuadFilter:
     _y1: float
     _y2: float
 
-    def __init__(self, synthesizer: Synthesizer) -> None:
+    def __init__(self, synthesizer: "Synthesizer") -> None:
         self._synthesizer = synthesizer
         self._resonance_peak_offset = 1.0 - 1.0 / math.sqrt(2.0)
 
@@ -2294,7 +2285,7 @@ class _BiQuadFilter:
 
 class _Channel:
 
-    _synthesizer: Synthesizer
+    _synthesizer: "Synthesizer"
     _is_percussion_channel: bool
 
     _bank_number: int
@@ -2316,7 +2307,7 @@ class _Channel:
 
     _pitch_bend: float
 
-    def __init__(self, synthesizer: Synthesizer, is_percussion_channel: bool) -> None:
+    def __init__(self, synthesizer: "Synthesizer", is_percussion_channel: bool) -> None:
         
         self._synthesizer = synthesizer
         self._is_percussion_channel = is_percussion_channel
@@ -2499,7 +2490,7 @@ class _VoiceState(IntEnum):
 
 class _Voice:
 
-    _synthesizer: Synthesizer
+    _synthesizer: "Synthesizer"
 
     _volEnv: _VolumeEnvelope
     _modEnv: _ModulationEnvelope
@@ -2559,7 +2550,7 @@ class _Voice:
     _voice_state: _VoiceState
     _voice_length: int
 
-    def __init__(self, synthesizer: Synthesizer) -> None:
+    def __init__(self, synthesizer: "Synthesizer") -> None:
         
         self._synthesizer = synthesizer
 
@@ -2789,3 +2780,174 @@ class _Voice:
     @property
     def voice_length(self) -> int:
         return self._voice_length
+
+
+
+class _VoiceCollection:
+
+    _synthesizer: "Synthesizer"
+
+    _voices: MutableSequence[_Voice]
+
+    _active_voice_count: int
+
+    def __init__(self, synthesizer: "Synthesizer", max_active_voice_count: int) -> None:
+        
+        self._synthesizer = synthesizer
+
+        self._voices = list[_Voice]()
+        for _ in range(max_active_voice_count):
+            self._voices.append(_Voice(synthesizer))
+
+        self._active_voice_count = 0
+    
+    def request_new(self, region: InstrumentRegion, channel: int) -> _Voice:
+
+        # If an exclusive class is assigned to the region, find a voice with the same class.
+        # If found, reuse it to avoid playing multiple voices with the same class at a time.
+        exclusive_class = region.exclusive_class
+
+        if exclusive_class != 0:
+
+            for i in range(self._active_voice_count):
+                voice = self._voices[i]
+                if voice.exclusive_class == exclusive_class and voice.channel == channel:
+                    return voice
+
+        # If the number of active voices is less than the limit, use a free one.
+        if self._active_voice_count < len(self._voices):
+
+            free = self._voices[self._active_voice_count]
+            self._active_voice_count += 1
+            return free
+
+        # Too many active voices...
+        # Find one which has the lowest priority.
+        candidate = self._voices[0]
+        lowest_priority = 1000000.0
+
+        for i in range(self._active_voice_count):
+
+            voice = self._voices[i]
+            priority = voice.priority
+
+            if priority < lowest_priority:
+
+                lowest_priority = priority
+                candidate = voice
+
+            elif priority == lowest_priority:
+
+                # Same priority...
+                # The older one should be more suitable for reuse.
+                if voice.voice_length > candidate.voice_length:
+                    candidate = voice
+
+        return candidate
+
+    def process(self) -> None:
+
+        i = 0
+
+        while True:
+
+            if i == self._active_voice_count:
+                return
+
+            if self._voices[i].process():
+                i += 1
+            else:
+
+                self._active_voice_count -= 1
+
+                tmp = self._voices[i]
+                self._voices[i] = self._voices[self._active_voice_count]
+                self._voices[self._active_voice_count] = tmp
+
+    def clear(self) -> None:
+        self._active_voice_count = 0
+    
+    @property
+    def active_voice_count(self) -> int:
+        return self._active_voice_count
+
+
+
+class SynthesizerSettings:
+
+    _DEFAULT_BLOCK_SIZE = 64
+    _DEFAULT_MAXIMUM_POLYPHONY = 64
+    _DEFAULT_ENABLE_REVERB_AND_CHORUS = True
+
+    _sample_rate: int
+    _block_size: int
+    _maximum_polyphony: int
+    _enable_reverb_and_chorus: bool
+
+    def __init__(self, sample_rate: int) -> None:
+        
+        SynthesizerSettings._check_sample_rate(sample_rate)
+
+        self._sample_rate = sample_rate
+        self._block_size = SynthesizerSettings._DEFAULT_BLOCK_SIZE
+        self._maximum_polyphony = SynthesizerSettings._DEFAULT_MAXIMUM_POLYPHONY
+        self._enable_reverb_and_chorus = SynthesizerSettings._DEFAULT_ENABLE_REVERB_AND_CHORUS
+    
+    @staticmethod
+    def _check_sample_rate(value: int) -> None:
+        if not (16000 <= value and value <= 192000):
+            raise Exception("The sample rate must be between 16000 and 192000.")
+    
+    @staticmethod
+    def _check_block_size(value: int) -> None:
+        if not (8 <= value and value <= 1024):
+            raise Exception("The block size must be between 8 and 1024.")
+
+    @staticmethod
+    def _check_maximum_polyphony(value: int) -> None:
+        if not (8 <= value and value <= 256):
+            raise Exception("The maximum number of polyphony must be between 8 and 256.")
+    
+    @property
+    def sample_rate(self) -> int:
+        return self._sample_rate
+    
+    @sample_rate.setter
+    def sample_rate(self, value: int) -> None:
+        SynthesizerSettings._check_sample_rate(value)
+        self._sample_rate = value
+
+    @property
+    def block_size(self) -> int:
+        return self._block_size
+    
+    @block_size.setter
+    def block_size(self, value: int) -> None:
+        SynthesizerSettings._check_block_size(value)
+        self._block_size = value
+    
+    @property
+    def maximum_polyphony(self) -> int:
+        return self._maximum_polyphony
+    
+    @maximum_polyphony.setter
+    def maximum_polyphony(self, value: int) -> None:
+        SynthesizerSettings._check_maximum_polyphony(value)
+        self._maximum_polyphony = value
+    
+    @property
+    def enable_reverb_and_chorus(self) -> bool:
+        return self._enable_reverb_and_chorus
+    
+    @enable_reverb_and_chorus.setter
+    def enable_reverb_and_chorus(self, value: bool) -> None:
+        self._enable_reverb_and_chorus = value
+
+
+
+class Synthesizer:
+    sample_rate: int
+    block_size: int
+    sound_font: SoundFont
+    channels: Sequence["_Channel"]
+    minimum_voice_duration: int
