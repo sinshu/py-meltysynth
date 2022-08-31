@@ -6,7 +6,7 @@ from array import array
 from collections.abc import MutableSequence, Sequence
 from enum import IntEnum
 from io import BufferedReader
-from typing import Dict, Optional
+from typing import Optional
 
 
 
@@ -2578,6 +2578,11 @@ class _Voice:
         self._filter = _BiQuadFilter(synthesizer)
 
         self._block = array("d", itertools.repeat(0, synthesizer.block_size))
+
+        self._current_mix_gain_left = 0
+        self._current_mix_gain_right = 0
+        self._current_reverb_send = 0
+        self._current_chorus_send = 0
     
     def start(self, region: _RegionPair, channel: int, key: int, velocity: int) -> None:
 
@@ -2972,7 +2977,7 @@ class Synthesizer:
 
     _minimum_voice_duration: int
 
-    _preset_lookup: Dict[int, Preset]
+    _preset_lookup: dict[int, Preset]
     _default_preset: Preset
 
     _channels: list[_Channel]
@@ -2998,7 +3003,7 @@ class Synthesizer:
 
         self._minimum_voice_duration = int(self._sample_rate / 500)
 
-        self._preset_lookup = Dict[int, Preset]()
+        self._preset_lookup = dict[int, Preset]()
 
         min_preset_id = 10000000000
         for preset in self._sound_font.presets:
@@ -3156,7 +3161,9 @@ class Synthesizer:
 
                 # No corresponding preset was found. Use the default one...
                 preset = self._default_preset
-
+        
+        else:
+            preset = self._preset_lookup[preset_id]
 
         for preset_region in preset.regions:
             if preset_region.contains(key, velocity):
@@ -3300,3 +3307,8 @@ class Synthesizer:
     @master_volume.setter
     def master_volume(self, value: float) -> None:
         self._master_volume = value
+
+
+
+def create_buffer(length: int) -> MutableSequence[float]:
+    return array("d", itertools.repeat(0, length))
