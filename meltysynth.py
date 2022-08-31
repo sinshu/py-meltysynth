@@ -3,11 +3,10 @@ import itertools
 import math
 
 from array import array
-from collections.abc import MutableSequence
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 from enum import IntEnum
 from io import BufferedReader
-from typing import Optional
+from typing import Dict, Optional
 
 
 
@@ -2627,7 +2626,7 @@ class _Voice:
         if self._note_gain < _SoundFontMath.non_audible():
             return False
 
-        channel_info = self._synthesizer.channels[self._channel]
+        channel_info = self._synthesizer._channels[self._channel]
 
         self.release_if_necessary(channel_info)
 
@@ -2707,7 +2706,7 @@ class _Voice:
     
     def release_if_necessary(self, channel_info: _Channel) -> None:
 
-        if self._voice_length < self._synthesizer.minimum_voice_duration:
+        if self._voice_length < self._synthesizer._minimum_voice_duration:
             return
 
         if self._voice_state == _VoiceState.RELEASE_REQUESTED and not channel_info.hold_pedal:
@@ -2946,8 +2945,66 @@ class SynthesizerSettings:
 
 
 class Synthesizer:
-    sample_rate: int
-    block_size: int
-    sound_font: SoundFont
-    channels: Sequence["_Channel"]
-    minimum_voice_duration: int
+
+    _CHANNEL_COUNT = 16
+    _PERCUSSION_CHANNEL = 9
+
+    _sound_font: SoundFont
+    _sample_rate: int
+    _block_size: int
+    _maximum_polyphony: int
+    _enable_reverb_and_chorus: bool
+
+    _minimum_voice_duration: int
+
+    _preset_lookup: Dict[int, Preset]
+    _default_preset: Preset
+
+    _channels: list[_Channel]
+
+    _voices: _VoiceCollection
+
+    _block_left: MutableSequence[float]
+    _block_right: MutableSequence[float]
+
+    _inverse_block_size: float
+
+    _block_read: int
+
+    _master_volume: float
+
+    @property
+    def block_size(self) -> int:
+        return self._block_size
+
+    @property
+    def maximum_polyphony(self) -> int:
+        return self._maximum_polyphony
+    
+    @property
+    def channel_count(self) -> int:
+        return Synthesizer._CHANNEL_COUNT
+    
+    @property
+    def percussion_channel(self) -> int:
+        return Synthesizer._PERCUSSION_CHANNEL
+    
+    @property
+    def sound_font(self) -> SoundFont:
+        return self._sound_font
+    
+    @property
+    def sample_rate(self) -> int:
+        return self._sample_rate
+    
+    @property
+    def active_voice_count(self) -> int:
+        return self._voices.active_voice_count
+    
+    @property
+    def master_volume(self) -> float:
+        return self._master_volume
+    
+    @master_volume.setter
+    def master_volume(self, value: float) -> None:
+        self._master_volume = value
