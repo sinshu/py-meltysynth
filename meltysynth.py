@@ -1866,7 +1866,7 @@ class _Oscillator:
             x1 = self._data[index1]
             x2 = self._data[index2]
             a = self._position - index1
-            block[t] = ((x1 + a * (x2 - x1)) / 32768)
+            block[t] = (x1 + a * (x2 - x1)) / 32768
 
             self._position += pitch_ratio
 
