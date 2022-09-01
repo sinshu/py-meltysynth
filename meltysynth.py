@@ -3247,6 +3247,8 @@ class Synthesizer:
         
         if offset is None:
             offset = 0
+        elif count is None:
+            raise Exception("'count' must be set if 'offset' is set.")
 
         if count is None:
             count = len(left)
@@ -3659,6 +3661,8 @@ class MidiFileSequencer:
         
         if offset is None:
             offset = 0
+        elif count is None:
+            raise Exception("'count' must be set if 'offset' is set.")
 
         if count is None:
             count = len(left)
@@ -3677,7 +3681,7 @@ class MidiFileSequencer:
             dst_rem = count - wrote
             rem = min(src_rem, dst_rem)
 
-            self._synthesizer.render(left, right, wrote, rem)
+            self._synthesizer.render(left, right, offset + wrote, rem)
 
             self._block_wrote += rem
             wrote += rem
