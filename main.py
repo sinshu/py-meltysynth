@@ -1,3 +1,5 @@
+import wave
+
 from array import array
 from collections.abc import Sequence
 
@@ -5,7 +7,7 @@ import meltysynth as ms
 
 
 
-def write_pcm_interleaved_int16(left: Sequence[float], right: Sequence[float], path: str) -> None:
+def write_wav_file(sample_rate: int, left: Sequence[float], right: Sequence[float], path: str) -> None:
 
     max_value = 0.0
 
@@ -29,9 +31,12 @@ def write_pcm_interleaved_int16(left: Sequence[float], right: Sequence[float], p
         data.append(sample_left)
         data.append(sample_right)
 
-    pcm = open(path, "wb")
-    pcm.write(data)
-    pcm.close()
+    wav = wave.open(path, "wb")
+    wav.setframerate(sample_rate)
+    wav.setnchannels(2)
+    wav.setsampwidth(2)
+    wav.writeframesraw(data)
+    wav.close()
 
 
 
@@ -58,8 +63,8 @@ def simple_chord() -> None:
     # Render the waveform.
     synthesizer.render(left, right)
 
-    # Save the waveform as a raw PCM file.
-    write_pcm_interleaved_int16(left, right, "simple_chord.pcm")
+    # Save the waveform as a WAV file.
+    write_wav_file(settings.sample_rate, left, right, "simple_chord.wav")
 
 
 
@@ -90,8 +95,8 @@ def flourish() -> None:
     # Render the waveform.
     sequencer.render(left, right)
 
-    # Save the waveform as a raw PCM file.
-    write_pcm_interleaved_int16(left, right, "flourish.pcm")
+    # Save the waveform as a WAV file.
+    write_wav_file(settings.sample_rate, left, right, "flourish.wav")
 
 
 

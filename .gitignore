@@ -161,5 +161,5 @@ cython_debug/
 
 # Audio related files
 *.sf2
-*.pcm
 *.mid
+*.wav
