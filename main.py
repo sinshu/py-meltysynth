@@ -59,7 +59,39 @@ def simple_chord() -> None:
     synthesizer.render(left, right)
 
     # Save the waveform as a raw PCM file.
-    write_pcm_interleaved_int16(left, right, "out.pcm")
+    write_pcm_interleaved_int16(left, right, "simple_chord.pcm")
+
+
+
+def flourish() -> None:
+
+    # Load the SoundFont.
+    sf2 = open("TimGM6mb.sf2", "rb")
+    sound_font = ms.SoundFont(sf2)
+    sf2.close()
+
+    # Create the synthesizer.
+    settings = ms.SynthesizerSettings(44100)
+    synthesizer = ms.Synthesizer(sound_font, settings)
+
+    # Load the MIDI file.
+    mid = open("flourish.mid", "rb")
+    midi_file = ms.MidiFile(mid)
+    mid.close()
+
+    # Create the MIDI sequencer.
+    sequencer = ms.MidiFileSequencer(synthesizer)
+    sequencer.play(midi_file, False)
+
+    # The output buffer.
+    left = ms.create_buffer(int(settings.sample_rate * midi_file.length))
+    right = ms.create_buffer(int(settings.sample_rate * midi_file.length))
+
+    # Render the waveform.
+    sequencer.render(left, right)
+
+    # Save the waveform as a raw PCM file.
+    write_pcm_interleaved_int16(left, right, "flourish.pcm")
 
 
 

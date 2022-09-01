@@ -37,6 +37,32 @@ class _BinaryReaderEx:
         return int.from_bytes(reader.read(1), byteorder="little", signed=False)
 
     @staticmethod
+    def read_int32_big_endian(reader: BufferedReader) -> int:
+        return int.from_bytes(reader.read(4), byteorder="big", signed=True)
+    
+    @staticmethod
+    def read_int16_big_endian(reader: BufferedReader) -> int:
+        return int.from_bytes(reader.read(2), byteorder="big", signed=True)
+
+    @staticmethod
+    def read_int_variable_length(reader: BufferedReader) -> int:
+
+        acc = 0
+        count = 0
+
+        while True:
+
+            value = _BinaryReaderEx.read_uint8(reader)
+            acc = (acc << 7) | (value & 127)
+            if (value & 128) == 0:
+                break
+            count += 1
+            if count == 4:
+                raise Exception("The length of the value must be equal to or less than 4.")
+
+        return acc
+
+    @staticmethod
     def read_four_cc(reader: BufferedReader) -> str:
 
         data = bytearray(reader.read(4))
@@ -3214,14 +3240,20 @@ class Synthesizer:
         
         self._block_read = self._block_size
     
-    def render(self, left: MutableSequence[float], right: MutableSequence[float]) -> None:
+    def render(self, left: MutableSequence[float], right: MutableSequence[float], offset: Optional[int] = None, count: Optional[int] = None) -> None:
 
         if len(left) != len(right):
             raise Exception("The output buffers for the left and right must be the same length.")
+        
+        if offset is None:
+            offset = 0
+
+        if count is None:
+            count = len(left)
 
         wrote = 0
 
-        while wrote < len(left):
+        while wrote < count:
 
             if self._block_read == self._block_size:
 
@@ -3229,13 +3261,13 @@ class Synthesizer:
                 self._block_read = 0
 
             src_rem = self._block_size - self._block_read
-            dst_rem = len(left) - wrote
+            dst_rem = count - wrote
             rem = min(src_rem, dst_rem)
 
             for t in range(rem):
 
-                left[wrote + t] = self._block_left[self._block_read + t]
-                right[wrote + t] = self._block_right[self._block_read + t]
+                left[offset + wrote + t] = self._block_left[self._block_read + t]
+                right[offset + wrote + t] = self._block_right[self._block_read + t]
 
             self._block_read += rem
             wrote += rem
@@ -3312,3 +3344,366 @@ class Synthesizer:
 
 def create_buffer(length: int) -> MutableSequence[float]:
     return array("d", itertools.repeat(0, length))
+
+
+
+class _MidiMessageType(IntEnum):
+
+    NORMAL = 0
+    TEMPO_CHANGE = 252
+    END_OF_TRACK = 255
+
+
+
+class _MidiMessage:
+
+    _data: bytearray
+
+    def __init__(self, channel: int, command: int, data1: int, data2: int) -> None:
+        
+        self._data = bytearray()
+        self._data.append(channel & 0xFF)
+        self._data.append(command & 0xFF)
+        self._data.append(data1 & 0xFF)
+        self._data.append(data2 & 0xFF)
+    
+    @staticmethod
+    def common1(status: int, data1: int) -> "_MidiMessage":
+
+        channel = status & 0x0F
+        command = status & 0xF0
+        data2 = 0
+
+        return _MidiMessage(channel, command, data1, data2)
+    
+    @staticmethod
+    def common2(status: int, data1: int, data2: int) -> "_MidiMessage":
+
+        channel = status & 0x0F
+        command = status & 0xF0
+
+        return _MidiMessage(channel, command, data1, data2)
+    
+    @staticmethod
+    def tempo_change(tempo: int) -> "_MidiMessage":
+
+        command = tempo >> 16
+        data1 = tempo >> 8
+        data2 = tempo
+
+        return _MidiMessage(_MidiMessageType.TEMPO_CHANGE, command, data1, data2)
+
+    @staticmethod
+    def end_of_track() -> "_MidiMessage":
+        return _MidiMessage(_MidiMessageType.END_OF_TRACK, 0, 0, 0)
+
+    @property
+    def type(self) -> _MidiMessageType:
+
+        match self.channel:
+
+            case int(_MidiMessageType.TEMPO_CHANGE):
+                return _MidiMessageType.TEMPO_CHANGE
+
+            case int(_MidiMessageType.END_OF_TRACK):
+                return _MidiMessageType.END_OF_TRACK
+
+            case _:
+                return _MidiMessageType.NORMAL
+
+    @property
+    def channel(self) -> int:
+        return self._data[0]
+    
+    @property
+    def command(self) -> int:
+        return self._data[1]
+    
+    @property
+    def data1(self) -> int:
+        return self._data[2]
+    
+    @property
+    def data2(self) -> int:
+        return self._data[3]
+    
+    @property
+    def tempo(self) -> float:
+        return 60000000.0 / ((self.command << 16) | (self.data1 << 8) | self.data2)
+
+
+
+class MidiFile:
+
+    _track_count: int
+    _resolution: int
+
+    _messages: Sequence[_MidiMessage]
+    _times: Sequence[float]
+
+    def __init__(self, reader: BufferedReader) -> None:
+        
+        chunk_type = _BinaryReaderEx.read_four_cc(reader)
+        if chunk_type != "MThd":
+            raise Exception("The chunk type must be 'MThd', but was '" + chunk_type + "'.")
+
+        size = _BinaryReaderEx.read_int32_big_endian(reader)
+        if size != 6:
+            raise Exception("The MThd chunk has invalid data.")
+
+        format = _BinaryReaderEx.read_int16_big_endian(reader)
+        if not (format == 0 or format == 1):
+            raise Exception("The format " + str(format) + " is not supported.")
+
+        self._track_count = _BinaryReaderEx.read_int16_big_endian(reader)
+        self._resolution = _BinaryReaderEx.read_int16_big_endian(reader)
+
+        message_lists = list[list[_MidiMessage]]()
+        tick_lists = list[list[int]]()
+
+        for _ in range(self._track_count):
+
+            message_list, tick_list = MidiFile._read_track(reader)
+            message_lists.append(message_list)
+            tick_lists.append(tick_list)
+
+        messages, times = MidiFile._merge_tracks(message_lists, tick_lists, self._resolution)
+
+        self._messages = messages
+        self._times = times
+
+    @staticmethod
+    def _read_track(reader: BufferedReader) -> tuple[list[_MidiMessage], list[int]]:
+
+        chunk_type = _BinaryReaderEx.read_four_cc(reader)
+        if chunk_type != "MTrk":
+            raise Exception("The chunk type must be 'MTrk', but was '" + chunk_type + "'.")
+
+        _BinaryReaderEx.read_int32_big_endian(reader)
+
+        messages = list[_MidiMessage]()
+        ticks = list[int]()
+
+        tick = 0
+        last_status = 0
+
+        while True:
+
+            delta = _BinaryReaderEx.read_int_variable_length(reader)
+            first = _BinaryReaderEx.read_uint8(reader)
+
+            tick += delta
+
+            if (first & 128) == 0:
+
+                command = last_status & 0xF0
+                if command == 0xC0 or command == 0xD0:
+                    messages.append(_MidiMessage.common1(last_status, first))
+                    ticks.append(tick)
+                else:
+                    data2 = _BinaryReaderEx.read_uint8(reader)
+                    messages.append(_MidiMessage.common2(last_status, first, data2))
+                    ticks.append(tick)
+
+                continue
+
+            match first:
+
+                case 0xF0: # System Exclusive
+                    MidiFile.discard_data(reader)
+
+                case 0xF7: # System Exclusive
+                    MidiFile.discard_data(reader)
+
+                case 0xFF: # Meta Event
+                    match _BinaryReaderEx.read_uint8(reader):
+                        case 0x2F: # End of Track
+                            _BinaryReaderEx.read_uint8(reader)
+                            messages.append(_MidiMessage.end_of_track())
+                            ticks.append(tick)
+                            return messages, ticks
+                        case 0x51: # Tempo
+                            messages.append(_MidiMessage.tempo_change(MidiFile.read_tempo(reader)))
+                            ticks.append(tick)
+                        case _:
+                            MidiFile.discard_data(reader)
+
+                case _:
+                    command = first & 0xF0
+                    if command == 0xC0 or command == 0xD0:
+                        data1 = _BinaryReaderEx.read_uint8(reader)
+                        messages.append(_MidiMessage.common1(first, data1))
+                        ticks.append(tick)
+                    else:
+                        data1 = _BinaryReaderEx.read_uint8(reader)
+                        data2 = _BinaryReaderEx.read_uint8(reader)
+                        messages.append(_MidiMessage.common2(first, data1, data2))
+                        ticks.append(tick)
+
+            last_status = first
+    
+    @staticmethod
+    def _merge_tracks(message_lists: list[list[_MidiMessage]], tick_lists: list[list[int]], resolution: int) -> tuple[list[_MidiMessage], list[float]]:
+
+        merged_messages = list[_MidiMessage]()
+        merged_times = list[float]()
+
+        indices = list[int](itertools.repeat(0, len(message_lists)))
+
+        current_tick: int = 0
+        current_time: float = 0.0
+
+        tempo: float = 120.0
+
+        while True:
+
+            min_tick = 10000000000
+            min_index = -1
+
+            for ch in range(len(tick_lists)):
+                if indices[ch] < len(tick_lists[ch]):
+                    tick = tick_lists[ch][indices[ch]]
+                    if tick < min_tick:
+                        min_tick = tick
+                        min_index = ch
+
+            if min_index == -1:
+                break
+
+            next_tick = tick_lists[min_index][indices[min_index]]
+            delta_tick = next_tick - current_tick
+            delta_time = 60.0 / (resolution * tempo) * delta_tick
+
+            current_tick += delta_tick
+            current_time += delta_time
+
+            message = message_lists[min_index][indices[min_index]]
+            if message.type == _MidiMessageType.TEMPO_CHANGE:
+                tempo = message.tempo
+            else:
+                merged_messages.append(message)
+                merged_times.append(current_time)
+
+            indices[min_index] += 1
+
+        return merged_messages, merged_times
+
+    @staticmethod
+    def read_tempo(reader: BufferedReader) -> int:
+
+        size = _BinaryReaderEx.read_int_variable_length(reader)
+        if size != 3:
+            raise Exception("Failed to read the tempo value.")
+
+        b1 = _BinaryReaderEx.read_uint8(reader)
+        b2 = _BinaryReaderEx.read_uint8(reader)
+        b3 = _BinaryReaderEx.read_uint8(reader)
+
+        return (b1 << 16) | (b2 << 8) | b3
+    
+    @staticmethod
+    def discard_data(reader: BufferedReader) -> None:
+
+        size = _BinaryReaderEx.read_int_variable_length(reader)
+        reader.seek(size, io.SEEK_CUR)
+    
+    @property
+    def length(self) -> float:
+        return self._times[-1]
+
+
+
+class MidiFileSequencer:
+
+    _synthesizer: Synthesizer
+
+    _midi_file: Optional[MidiFile]
+    _loop: bool
+
+    _block_wrote: int
+
+    _current_time: float
+    _msg_index: int
+
+    _block_left: MutableSequence[float]
+    _block_right: MutableSequence[float]
+
+    def __init__(self, synthesizer: Synthesizer) -> None:
+        self._synthesizer = synthesizer
+    
+    def play(self, midi_file: MidiFile, loop: bool) -> None:
+
+        self._midi_file = midi_file
+        self._loop = loop
+
+        self._block_wrote = self._synthesizer.block_size
+
+        self._current_time = 0.0
+        self._msg_index = 0
+
+        self._block_left = array("d", itertools.repeat(0, self._synthesizer.block_size))
+        self._block_right = array("d", itertools.repeat(0, self._synthesizer.block_size))
+
+        self._synthesizer.reset()
+    
+    def stop(self) -> None:
+
+        self._midi_file = None
+
+        self._synthesizer.reset()
+    
+    def render(self, left: MutableSequence[float], right: MutableSequence[float], offset: Optional[int] = None, count: Optional[int] = None) -> None:
+
+        if len(left) != len(right):
+            raise Exception("The output buffers for the left and right must be the same length.")
+        
+        if offset is None:
+            offset = 0
+
+        if count is None:
+            count = len(left)
+        
+        wrote = 0
+
+        while wrote < count:
+
+            if self._block_wrote == self._synthesizer.block_size:
+
+                self._process_events()
+                self._block_wrote = 0
+                self._current_time += self._synthesizer.block_size / self._synthesizer.sample_rate
+
+            src_rem = self._synthesizer.block_size - self._block_wrote
+            dst_rem = count - wrote
+            rem = min(src_rem, dst_rem)
+
+            self._synthesizer.render(left, right, wrote, rem)
+
+            self._block_wrote += rem
+            wrote += rem
+
+    def _process_events(self) -> None:
+
+        if self._midi_file is None:
+            return
+
+        while self._msg_index < len(self._midi_file._messages):
+
+            time = self._midi_file._times[self._msg_index]
+            msg = self._midi_file._messages[self._msg_index]
+
+            if time <= self._current_time:
+
+                if msg.type == _MidiMessageType.NORMAL:
+                    self._synthesizer.process_midi_message(msg.channel, msg.command, msg.data1, msg.data2)
+                
+                self._msg_index += 1
+
+            else:
+                break
+
+        if self._msg_index == len(self._midi_file._messages) and self._loop:
+
+            self._current_time = 0.0
+            self._msg_index = 0
+            self._synthesizer.note_off_all(False)
