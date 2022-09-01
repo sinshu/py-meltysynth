@@ -5,6 +5,8 @@ Py-MeltySynth is a SoundFont MIDI synthesizer written in pure Python, ported fro
 An example code to synthesize a simple chord:
 
 ```python
+import meltysynth as ms
+
 # Load the SoundFont.
 sf2 = open("TimGM6mb.sf2", "rb")
 sound_font = ms.SoundFont(sf2)
@@ -27,9 +29,11 @@ right = ms.create_buffer(3 * settings.sample_rate)
 synthesizer.render(left, right)
 ```
 
-Another example code to synthesize a MIDI file (it will take a long time 😉):
+Another example code to synthesize a MIDI file. It will take a long time 😉
 
 ```python
+import meltysynth as ms
+
 # Load the SoundFont.
 sf2 = open("TimGM6mb.sf2", "rb")
 sound_font = ms.SoundFont(sf2)
