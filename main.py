@@ -1,10 +1,11 @@
+from array import array
 from collections.abc import Sequence
 
 import meltysynth as ms
 
 
 
-def write_pcm(left: Sequence[float], right: Sequence[float], path: str) -> None:
+def write_pcm_interleaved_int16(left: Sequence[float], right: Sequence[float], path: str) -> None:
 
     max_value = 0.0
 
@@ -18,34 +19,54 @@ def write_pcm(left: Sequence[float], right: Sequence[float], path: str) -> None:
     
     a = 0.99 / max_value
 
-    pcm = open(path, "wb")
+    data = array("h")
 
     for t in range(len(left)):
 
         sample_left = int(32768 * a * left[t])
         sample_right = int(32768 * a * right[t])
-        pcm.write(sample_left.to_bytes(2, byteorder="little", signed=True))
-        pcm.write(sample_right.to_bytes(2, byteorder="little", signed=True))
 
+        data.append(sample_left)
+        data.append(sample_right)
+
+    pcm = open(path, "wb")
+    pcm.write(data)
     pcm.close()
 
 
 
-sf2 = open("TimGM6mb.sf2", "rb")
-sound_font = ms.SoundFont(sf2)
-sf2.close()
+def simple_chord() -> None:
 
-settings = ms.SynthesizerSettings(44100)
+    # Load the SoundFont.
+    sf2 = open("TimGM6mb.sf2", "rb")
+    sound_font = ms.SoundFont(sf2)
+    sf2.close()
 
-synthesizer = ms.Synthesizer(sound_font, settings)
+    # Create the synthesizer.
+    settings = ms.SynthesizerSettings(44100)
+    synthesizer = ms.Synthesizer(sound_font, settings)
 
-left = ms.create_buffer(3 * settings.sample_rate)
-right = ms.create_buffer(3 * settings.sample_rate)
+    # Play some notes (middle C, E, G).
+    synthesizer.note_on(0, 60, 100)
+    synthesizer.note_on(0, 64, 100)
+    synthesizer.note_on(0, 67, 100)
 
-synthesizer.note_on(0, 60, 100)
-synthesizer.note_on(0, 64, 100)
-synthesizer.note_on(0, 67, 100)
+    # The output buffer (3 seconds).
+    left = ms.create_buffer(3 * settings.sample_rate)
+    right = ms.create_buffer(3 * settings.sample_rate)
 
-synthesizer.render(left, right)
+    # Render the waveform.
+    synthesizer.render(left, right)
 
-write_pcm(left, right, "out.pcm")
+    # Save the waveform as a raw PCM file.
+    write_pcm_interleaved_int16(left, right, "out.pcm")
+
+
+
+def main() -> None:
+    simple_chord()
+
+
+
+if __name__ == "__main__":
+    main()
