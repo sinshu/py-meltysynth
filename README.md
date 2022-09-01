@@ -2,6 +2,18 @@
 
 Py-MeltySynth is a SoundFont MIDI synthesizer written in pure Python, ported from [MeltySynth for C#](https://github.com/sinshu/meltysynth).
 
+
+
+## Demo
+
+https://www.youtube.com/watch?v=Pheb0pSzQP8  
+
+[![Demo video](https://img.youtube.com/vi/Pheb0pSzQP8/0.jpg)](https://www.youtube.com/watch?v=Pheb0pSzQP8)
+
+
+
+## Examples
+
 An example code to synthesize a simple chord:
 
 ```python
