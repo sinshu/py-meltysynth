@@ -87,11 +87,13 @@ class _BinaryReaderEx:
         return data[0:actualLength].decode("ascii")
     
     @staticmethod
-    def read_int16_array(reader: BufferedReader, size: int) -> Sequence[int]:
+    def read_int16_array(reader: BufferedReader, size: int) -> Sequence[float]:
 
         count = int(size / 2)
-        result = array("h")
-        result.fromfile(reader, count)
+        data = array("h")
+        data.fromfile(reader, count)
+
+        result = array("d", map(lambda x: x / 32768, data))
         
         return result
 
@@ -306,7 +308,7 @@ class SoundFontInfo:
 class _SoundFontSampleData:
 
     _bits_per_sample: int
-    _samples: Sequence[int]
+    _samples: Sequence[float]
 
     def __init__(self, reader: BufferedReader) -> None:
         
@@ -345,7 +347,7 @@ class _SoundFontSampleData:
         return self._bits_per_sample
 
     @property
-    def samples(self) -> Sequence[int]:
+    def samples(self) -> Sequence[float]:
         return self._samples
 
 
@@ -1502,7 +1504,7 @@ class SoundFont:
 
     _info: SoundFontInfo
     _bits_per_sample: int
-    _wave_data: Sequence[int]
+    _wave_data: Sequence[float]
     _sample_headers: Sequence[SampleHeader]
     _presets: Sequence[Preset]
     _instruments: Sequence[Instrument]
@@ -1535,7 +1537,7 @@ class SoundFont:
         return self._info
     
     @property
-    def wave_data(self) -> Sequence[int]:
+    def wave_data(self) -> Sequence[float]:
         return self._wave_data
     
     @property
@@ -1763,7 +1765,7 @@ class _Oscillator:
 
     _synthesizer: "Synthesizer"
 
-    _data: Sequence[int]
+    _data: Sequence[float]
     _loop_mode: LoopMode
     _sample_rate: int
     _start: int
@@ -1783,7 +1785,7 @@ class _Oscillator:
     def __init__(self, synthesizer: "Synthesizer") -> None:
         self._synthesizer = synthesizer
 
-    def start(self, data: Sequence[int], loop_mode: LoopMode, sample_rate: int, start: int, end: int, start_loop: int, end_loop: int, root_key: int, coarse_tune: int, fine_tune: int, scale_tuning: int) -> None:
+    def start(self, data: Sequence[float], loop_mode: LoopMode, sample_rate: int, start: int, end: int, start_loop: int, end_loop: int, root_key: int, coarse_tune: int, fine_tune: int, scale_tuning: int) -> None:
 
         self._data = data
         self._loop_mode = loop_mode
@@ -1837,10 +1839,10 @@ class _Oscillator:
                 else:
                     return False
 
-            x1: int = self._data[index]
-            x2: int = self._data[index + 1]
+            x1: float = self._data[index]
+            x2: float = self._data[index + 1]
             a = self._position - index
-            block[t] = (x1 + a * (x2 - x1)) / 32768
+            block[t] = x1 + a * (x2 - x1)
 
             self._position += pitch_ratio
 
@@ -1866,7 +1868,7 @@ class _Oscillator:
             x1 = self._data[index1]
             x2 = self._data[index2]
             a = self._position - index1
-            block[t] = (x1 + a * (x2 - x1)) / 32768
+            block[t] = x1 + a * (x2 - x1)
 
             self._position += pitch_ratio
 
@@ -2181,7 +2183,7 @@ class _Lfo:
 class _RegionEx:
 
     @staticmethod
-    def start_oscillator(oscillator: _Oscillator, data: Sequence[int], region: _RegionPair) -> None:
+    def start_oscillator(oscillator: _Oscillator, data: Sequence[float], region: _RegionPair) -> None:
         
         sample_rate = region.instrument.sample.sample_rate
         loop_mode = region.sample_modes
