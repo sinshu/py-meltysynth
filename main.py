@@ -1,5 +1,4 @@
 import wave
-import time
 
 from array import array
 from collections.abc import Sequence
@@ -62,10 +61,7 @@ def simple_chord() -> None:
     right = ms.create_buffer(3 * settings.sample_rate)
 
     # Render the waveform.
-    start = time.time()
     synthesizer.render(left, right)
-    dur = time.time() - start
-    print("time: " + str(dur))
 
     # Save the waveform as a WAV file.
     write_wav_file(settings.sample_rate, left, right, "simple_chord.wav")
@@ -97,10 +93,7 @@ def flourish() -> None:
     right = ms.create_buffer(int(settings.sample_rate * midi_file.length))
 
     # Render the waveform.
-    start = time.time()
     sequencer.render(left, right)
-    dur = time.time() - start
-    print("time: " + str(dur))
 
     # Save the waveform as a WAV file.
     write_wav_file(settings.sample_rate, left, right, "flourish.wav")
@@ -108,7 +101,7 @@ def flourish() -> None:
 
 
 def main() -> None:
-    flourish()
+    simple_chord()
 
 
 
