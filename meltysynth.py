@@ -563,8 +563,10 @@ class _ZoneInfo:
     _generator_count: int
     _modulator_count: int
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, reader: BufferedReader) -> None:
+
+        self._generator_index = _BinaryReaderEx.read_uint16(reader)
+        self._modulator_index = _BinaryReaderEx.read_uint16(reader)
 
     @staticmethod
     def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_ZoneInfo"]:
@@ -576,14 +578,9 @@ class _ZoneInfo:
         zones = list[_ZoneInfo]()
 
         for i in range(count):
-
-            zone = _ZoneInfo()
-            zone._generator_index = _BinaryReaderEx.read_uint16(reader)
-            zone._modulator_index = _BinaryReaderEx.read_uint16(reader)
-            zones.append(zone)
+            zones.append(_ZoneInfo(reader))
         
         for i in range(count - 1):
-
             zones[i]._generator_count = zones[i + 1]._generator_index - zones[i]._generator_index
             zones[i]._modulator_count = zones[i + 1]._modulator_index - zones[i]._modulator_index
         
@@ -611,8 +608,8 @@ class _Zone:
 
     _generators: Sequence[_Generator]
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, generators: Sequence[_Generator]) -> None:
+        self._generators = generators
 
     @staticmethod
     def create(infos: Sequence[_ZoneInfo], generators: Sequence[_Generator]) -> Sequence["_Zone"]:
@@ -628,14 +625,17 @@ class _Zone:
 
             info: _ZoneInfo = infos[i]
 
-            zone = _Zone()
-            zone._generators = list[_Generator]()
+            gs = list[_Generator]()
             for j in range(info.generator_count):
-                zone._generators.append(generators[info.generator_index + j])
+                gs.append(generators[info.generator_index + j])
             
-            zones.append(zone)
+            zones.append(_Zone(gs))
         
         return zones
+    
+    @staticmethod
+    def empty():
+        return _Zone(list[_Generator]())
     
     @property
     def generators(self) -> Sequence[_Generator]:
@@ -654,8 +654,15 @@ class _PresetInfo:
     _genre: int
     _morphology: int
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, reader: BufferedReader) -> None:
+
+        self._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
+        self._patch_number = _BinaryReaderEx.read_uint16(reader)
+        self._bank_number = _BinaryReaderEx.read_uint16(reader)
+        self._zone_start_index = _BinaryReaderEx.read_uint16(reader)
+        self._library = _BinaryReaderEx.read_int32(reader)
+        self._genre = _BinaryReaderEx.read_int32(reader)
+        self._morphology = _BinaryReaderEx.read_int32(reader)
 
     @staticmethod
     def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_PresetInfo"]:
@@ -667,16 +674,7 @@ class _PresetInfo:
         presets = list[_PresetInfo]()
 
         for i in range(count):
-
-            preset = _PresetInfo()
-            preset._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
-            preset._patch_number = _BinaryReaderEx.read_uint16(reader)
-            preset._bank_number = _BinaryReaderEx.read_uint16(reader)
-            preset._zone_start_index = _BinaryReaderEx.read_uint16(reader)
-            preset._library = _BinaryReaderEx.read_int32(reader)
-            preset._genre = _BinaryReaderEx.read_int32(reader)
-            preset._morphology = _BinaryReaderEx.read_int32(reader)
-            presets.append(preset)
+            presets.append(_PresetInfo(reader))
 
         for i in range(count - 1):
             presets[i]._zone_end_index = presets[i + 1].zone_start_index - 1
@@ -723,8 +721,10 @@ class _InstrumentInfo:
     _zone_start_index: int
     _zone_end_index: int
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, reader: BufferedReader) -> None:
+
+        self._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
+        self._zone_start_index = _BinaryReaderEx.read_uint16(reader)
 
     @staticmethod
     def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_InstrumentInfo"]:
@@ -736,11 +736,7 @@ class _InstrumentInfo:
         instruments = list[_InstrumentInfo]()
 
         for i in range(count):
-
-            instrument = _InstrumentInfo()
-            instrument._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
-            instrument._zone_start_index = _BinaryReaderEx.read_uint16(reader)
-            instruments.append(instrument)
+            instruments.append(_InstrumentInfo(reader))
 
         for i in range(count - 1):
             instruments[i]._zone_end_index = instruments[i + 1]._zone_start_index - 1
@@ -816,7 +812,7 @@ class InstrumentRegion:
     _sample: SampleHeader
     _gs: MutableSequence[int]
 
-    def __init__(self, instrument: Instrument, global_generators: Optional[Sequence[_Generator]], local_generators: Optional[Sequence[_Generator]], samples: Sequence[SampleHeader]) -> None:
+    def __init__(self, instrument: Instrument, global_zone: _Zone, local_zone: _Zone, samples: Sequence[SampleHeader]) -> None:
         
         self._gs = array("h", itertools.repeat(0, 61))
         self._gs[_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY] = 13500
@@ -839,13 +835,11 @@ class InstrumentRegion:
         self._gs[_GeneratorType.SCALE_TUNING] = 100
         self._gs[_GeneratorType.OVERRIDING_ROOT_KEY] = -1
 
-        if global_generators is not None:
-            for parameter in global_generators:
-                self._set_parameter(parameter)
-        
-        if local_generators is not None:
-            for parameter in local_generators:
-                self._set_parameter(parameter)
+        for generator in global_zone.generators:
+            self._set_parameter(generator)
+
+        for generator in local_zone.generators:
+            self._set_parameter(generator)
         
         id = self._gs[_GeneratorType.SAMPLE_ID]
         if not (0 <= id and id < len(samples)):
@@ -859,31 +853,33 @@ class InstrumentRegion:
 
         # Is the first one the global zone?
         if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != _GeneratorType.SAMPLE_ID:
+
             # The first one is the global zone.
             global_zone = zones[0]
-        
-        if global_zone is not None:
+
             # The global zone is regarded as the base setting of subsequent zones.
             count = len(zones) - 1
             regions = list[InstrumentRegion]()
             for i in range(count):
-                regions.append(InstrumentRegion(instrument, global_zone.generators, zones[i + 1].generators, samples))
+                regions.append(InstrumentRegion(instrument, global_zone, zones[i + 1], samples))
             return regions
+
         else:
+
             # No global zone.
             count = len(zones)
             regions = list[InstrumentRegion]()
             for i in range(count):
-                regions.append(InstrumentRegion(instrument, None, zones[i].generators, samples))
+                regions.append(InstrumentRegion(instrument, _Zone.empty(), zones[i], samples))
             return regions
 
-    def _set_parameter(self, parameter: _Generator) -> None:
+    def _set_parameter(self, generator: _Generator) -> None:
 
-        index = int(parameter.generator_type)
+        index = int(generator.generator_type)
 
         # Unknown generators should be ignored.
         if 0 <= index and index < len(self._gs):
-            self._gs[index] = parameter.value
+            self._gs[index] = generator.value
     
     def contains(self, key: int, velocity: int) -> bool:
         contains_key = self.key_range_start <= key and key <= self.key_range_end
@@ -1173,19 +1169,17 @@ class PresetRegion:
     _instrument: Instrument
     _gs: MutableSequence[int]
 
-    def __init__(self, preset: Preset, global_generators: Optional[Sequence[_Generator]], local_generators: Optional[Sequence[_Generator]], instruments: Sequence[Instrument]) -> None:
+    def __init__(self, preset: Preset, global_zone: _Zone, local_zone: _Zone, instruments: Sequence[Instrument]) -> None:
         
         self._gs = array("h", itertools.repeat(0, 61))
         self._gs[_GeneratorType.KEY_RANGE] = 0x7F00
         self._gs[_GeneratorType.VELOCITY_RANGE] = 0x7F00
 
-        if global_generators is not None:
-            for parameter in global_generators:
-                self._set_parameter(parameter)
+        for generator in global_zone.generators:
+            self._set_parameter(generator)
         
-        if local_generators is not None:
-            for parameter in local_generators:
-                self._set_parameter(parameter)
+        for generator in local_zone.generators:
+            self._set_parameter(generator)
         
         id = self._gs[_GeneratorType.INSTRUMENT]
         if not (0 <= id and id < len(instruments)):
@@ -1199,31 +1193,33 @@ class PresetRegion:
 
         # Is the first one the global zone?
         if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != _GeneratorType.INSTRUMENT:
+
             # The first one is the global zone.
             global_zone = zones[0]
-        
-        if global_zone is not None:
+
             # The global zone is regarded as the base setting of subsequent zones.
             count = len(zones) - 1
             regions = list[PresetRegion]()
             for i in range(count):
-                regions.append(PresetRegion(preset, global_zone.generators, zones[i + 1].generators, instruments))
+                regions.append(PresetRegion(preset, global_zone, zones[i + 1], instruments))
             return regions
+
         else:
+
             # No global zone.
             count = len(zones)
             regions = list[PresetRegion]()
             for i in range(count):
-                regions.append(PresetRegion(preset, None, zones[i].generators, instruments))
+                regions.append(PresetRegion(preset, _Zone.empty(), zones[i], instruments))
             return regions
 
-    def _set_parameter(self, parameter: _Generator) -> None:
+    def _set_parameter(self, generator: _Generator) -> None:
 
-        index = int(parameter.generator_type)
+        index = int(generator.generator_type)
 
         # Unknown generators should be ignored.
         if 0 <= index and index < len(self._gs):
-            self._gs[index] = parameter.value
+            self._gs[index] = generator.value
     
     def contains(self, key: int, velocity: int) -> bool:
         contains_key = self.key_range_start <= key and key <= self.key_range_end

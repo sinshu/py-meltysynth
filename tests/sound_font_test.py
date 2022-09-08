@@ -38,7 +38,7 @@ class TestTimGM6mb(unittest.TestCase):
         for value in sf2.wave_data:
             sum += value
         
-        self.assertEqual(sum, 713099516)
+        self.assertEqual(sum, 713099516 / 32768)
 
 
 
@@ -75,4 +75,4 @@ class TestGeneralUserGsMuseScore(unittest.TestCase):
         for value in sf2.wave_data:
             sum += value
         
-        self.assertEqual(sum, 101035585)
+        self.assertEqual(sum, 101035585 / 32768)
