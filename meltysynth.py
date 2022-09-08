@@ -849,8 +849,6 @@ class InstrumentRegion:
     @staticmethod
     def _create(instrument: Instrument, zones: Sequence[_Zone], samples: Sequence[SampleHeader]) -> Sequence["InstrumentRegion"]:
 
-        global_zone: Optional[_Zone] = None
-
         # Is the first one the global zone?
         if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != _GeneratorType.SAMPLE_ID:
 
@@ -1188,8 +1186,6 @@ class PresetRegion:
     
     @staticmethod
     def _create(preset: Preset, zones: Sequence[_Zone], instruments: Sequence[Instrument]) -> Sequence["PresetRegion"]:
-
-        global_zone: Optional[_Zone] = None
 
         # Is the first one the global zone?
         if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != _GeneratorType.INSTRUMENT:
