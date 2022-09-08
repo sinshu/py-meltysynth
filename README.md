@@ -14,7 +14,7 @@ https://www.youtube.com/watch?v=Pheb0pSzQP8
 
 ## Development status
 
-It works, but it's slow. Without external libraries, sample-by-sample audio processing seems tough for Python... To improve the performance, the core audio processing part should be rewritten with NumPy or something like that.
+It works, but it's slow. Without external libraries, sample-by-sample audio processing seems tough for Python... But Python is said to be becoming more performance oriented, so it may be practical in a few years.
 
 
 
