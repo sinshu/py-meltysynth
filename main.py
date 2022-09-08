@@ -112,7 +112,7 @@ def flourish() -> None:
 
 
 def main() -> None:
-    flourish()
+    simple_chord()
 
 
 
