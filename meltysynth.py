@@ -9,9 +9,7 @@ from io import BufferedReader
 from typing import Optional
 
 
-
 class _BinaryReaderEx:
-
     @staticmethod
     def read_int32(reader: BufferedReader) -> int:
         return int.from_bytes(reader.read(4), byteorder="little", signed=True)
@@ -39,43 +37,41 @@ class _BinaryReaderEx:
     @staticmethod
     def read_int32_big_endian(reader: BufferedReader) -> int:
         return int.from_bytes(reader.read(4), byteorder="big", signed=True)
-    
+
     @staticmethod
     def read_int16_big_endian(reader: BufferedReader) -> int:
         return int.from_bytes(reader.read(2), byteorder="big", signed=True)
 
     @staticmethod
     def read_int_variable_length(reader: BufferedReader) -> int:
-
         acc = 0
         count = 0
 
         while True:
-
             value = _BinaryReaderEx.read_uint8(reader)
             acc = (acc << 7) | (value & 127)
             if (value & 128) == 0:
                 break
             count += 1
             if count == 4:
-                raise Exception("The length of the value must be equal to or less than 4.")
+                raise Exception(
+                    "The length of the value must be equal to or less than 4."
+                )
 
         return acc
 
     @staticmethod
     def read_four_cc(reader: BufferedReader) -> str:
-
         data = bytearray(reader.read(4))
 
         for i, value in enumerate(data):
             if not (32 <= value and value <= 126):
-                data[i] = 63 # '?'
+                data[i] = 63  # '?'
 
         return data.decode("ascii")
 
     @staticmethod
     def read_fixed_length_string(reader: BufferedReader, length: int) -> str:
-
         data = reader.read(length)
 
         actualLength = 0
@@ -83,12 +79,13 @@ class _BinaryReaderEx:
             if value == 0:
                 break
             actualLength += 1
-        
-        return data[0:actualLength].decode("ascii")
-    
-    @staticmethod
-    def read_int16_array_as_float_array(reader: BufferedReader, size: int) -> Sequence[float]:
 
+        return data[0:actualLength].decode("ascii")
+
+    @staticmethod
+    def read_int16_array_as_float_array(
+        reader: BufferedReader, size: int
+    ) -> Sequence[float]:
         count = int(size / 2)
         data = array("h")
         data.fromfile(reader, count)
@@ -96,52 +93,50 @@ class _BinaryReaderEx:
         return array("f", map(lambda x: x / 32768.0, data))
 
 
-
 class _SoundFontMath:
-
     @staticmethod
     def half_pi() -> float:
         return math.pi / 2
-    
+
     @staticmethod
     def non_audible() -> float:
-        return 1.0E-3
-    
+        return 1.0e-3
+
     @staticmethod
     def log_non_audible() -> float:
-        return math.log(1.0E-3)
-    
+        return math.log(1.0e-3)
+
     @staticmethod
     def timecents_to_seconds(x: float) -> float:
         return math.pow(2.0, (1.0 / 1200.0) * x)
-    
+
     @staticmethod
     def cents_to_hertz(x: float) -> float:
         return 8.176 * math.pow(2.0, (1.0 / 1200.0) * x)
-    
+
     @staticmethod
     def cents_to_multiplying_factor(x: float) -> float:
         return math.pow(2.0, (1.0 / 1200.0) * x)
-    
+
     @staticmethod
     def decibels_to_linear(x: float) -> float:
         return math.pow(10.0, 0.05 * x)
-    
+
     @staticmethod
     def linear_to_decibels(x: float) -> float:
         return 20.0 * math.log10(x)
-    
+
     @staticmethod
     def key_number_to_multiplying_factor(cents: int, key: int) -> float:
         return _SoundFontMath.timecents_to_seconds(cents * (60 - key))
-    
+
     @staticmethod
     def exp_cutoff(x: float) -> float:
         if x < _SoundFontMath.log_non_audible():
             return 0.0
         else:
             return math.exp(x)
-    
+
     @staticmethod
     def clamp(value: float, min: float, max: float) -> float:
         if value < min:
@@ -152,29 +147,28 @@ class _SoundFontMath:
             return value
 
 
-
 class _ArrayMath:
-
     @staticmethod
-    def multiply_add(a: float, x: Sequence[float], destination: MutableSequence[float]) -> None:
+    def multiply_add(
+        a: float, x: Sequence[float], destination: MutableSequence[float]
+    ) -> None:
         for i in range(len(destination)):
             destination[i] += a * x[i]
-    
+
     @staticmethod
-    def multiply_add_slope(a: float, step: float, x: Sequence[float], destination: MutableSequence[float]) -> None:
+    def multiply_add_slope(
+        a: float, step: float, x: Sequence[float], destination: MutableSequence[float]
+    ) -> None:
         for i in range(len(destination)):
             destination[i] += a * x[i]
             a += step
 
 
-
 class SoundFontVersion:
-
     _major: int
     _minor: int
 
     def __init__(self, major: int, minor: int) -> None:
-
         self._major = major
         self._minor = minor
 
@@ -187,9 +181,7 @@ class SoundFontVersion:
         return self._minor
 
 
-
 class SoundFontInfo:
-    
     _version: SoundFontVersion = SoundFontVersion(0, 0)
     _target_sound_engine: str = ""
     _bank_name: str = ""
@@ -203,7 +195,6 @@ class SoundFontInfo:
     _tools: str = ""
 
     def __init__(self, reader: BufferedReader) -> None:
-
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
@@ -212,134 +203,163 @@ class SoundFontInfo:
 
         list_type = _BinaryReaderEx.read_four_cc(reader)
         if list_type != "INFO":
-            raise Exception("The type of the LIST chunk must be 'INFO', but was '" + list_type + "'.")
-        
-        while reader.tell() < end:
+            raise Exception(
+                "The type of the LIST chunk must be 'INFO', but was '"
+                + list_type
+                + "'."
+            )
 
+        while reader.tell() < end:
             id = _BinaryReaderEx.read_four_cc(reader)
             size = _BinaryReaderEx.read_uint32(reader)
 
             match id:
-
                 case "ifil":
-                    self._version = SoundFontVersion(_BinaryReaderEx.read_uint16(reader), _BinaryReaderEx.read_uint16(reader))
+                    self._version = SoundFontVersion(
+                        _BinaryReaderEx.read_uint16(reader),
+                        _BinaryReaderEx.read_uint16(reader),
+                    )
 
                 case "isng":
-                    self._target_sound_engine = _BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._target_sound_engine = (
+                        _BinaryReaderEx.read_fixed_length_string(reader, size)
+                    )
 
                 case "INAM":
-                    self._bank_name = _BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._bank_name = _BinaryReaderEx.read_fixed_length_string(
+                        reader, size
+                    )
 
                 case "irom":
-                    self._rom_name = _BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._rom_name = _BinaryReaderEx.read_fixed_length_string(
+                        reader, size
+                    )
 
                 case "iver":
-                    self._rom_version = SoundFontVersion(_BinaryReaderEx.read_uint16(reader), _BinaryReaderEx.read_uint16(reader))
+                    self._rom_version = SoundFontVersion(
+                        _BinaryReaderEx.read_uint16(reader),
+                        _BinaryReaderEx.read_uint16(reader),
+                    )
 
                 case "ICRD":
-                    self._creation_date = _BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._creation_date = _BinaryReaderEx.read_fixed_length_string(
+                        reader, size
+                    )
 
                 case "IENG":
-                    self._author = _BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._author = _BinaryReaderEx.read_fixed_length_string(
+                        reader, size
+                    )
 
                 case "IPRD":
-                    self._target_product = _BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._target_product = _BinaryReaderEx.read_fixed_length_string(
+                        reader, size
+                    )
 
                 case "ICOP":
-                    self._copyright = _BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._copyright = _BinaryReaderEx.read_fixed_length_string(
+                        reader, size
+                    )
 
                 case "ICMT":
-                    self._comments = _BinaryReaderEx.read_fixed_length_string(reader, size)
+                    self._comments = _BinaryReaderEx.read_fixed_length_string(
+                        reader, size
+                    )
 
                 case "ISFT":
                     self._tools = _BinaryReaderEx.read_fixed_length_string(reader, size)
 
                 case _:
-                    raise Exception("The INFO list contains an unknown ID '" + id + "'.")
+                    raise Exception(
+                        "The INFO list contains an unknown ID '" + id + "'."
+                    )
 
     @property
     def version(self) -> SoundFontVersion:
         return self._version
-    
+
     @property
     def target_sound_engine(self) -> str:
         return self._target_sound_engine
-    
+
     @property
     def bank_name(self) -> str:
         return self._bank_name
-    
+
     @property
     def rom_name(self) -> str:
         return self._rom_name
-    
+
     @property
     def rom_version(self) -> SoundFontVersion:
         return self._rom_version
-    
+
     @property
     def creation_date(self) -> str:
         return self._creation_date
-    
+
     @property
     def author(self) -> str:
         return self._author
-    
+
     @property
     def target_product(self) -> str:
         return self._target_product
-    
+
     @property
     def copyright(self) -> str:
         return self._copyright
-    
+
     @property
     def comments(self) -> str:
         return self._comments
-    
+
     @property
     def tools(self) -> str:
         return self._tools
 
 
-
 class _SoundFontSampleData:
-
     _bits_per_sample: int
     _samples: Sequence[float]
 
     def __init__(self, reader: BufferedReader) -> None:
-        
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
-        
+
         end = reader.tell() + _BinaryReaderEx.read_uint32(reader)
 
         list_type = _BinaryReaderEx.read_four_cc(reader)
         if list_type != "sdta":
-            raise Exception("The type of the LIST chunk must be 'sdta', but was '" + list_type + "'.")
-        
-        while reader.tell() < end:
+            raise Exception(
+                "The type of the LIST chunk must be 'sdta', but was '"
+                + list_type
+                + "'."
+            )
 
+        while reader.tell() < end:
             id = _BinaryReaderEx.read_four_cc(reader)
             size = _BinaryReaderEx.read_uint32(reader)
 
             match id:
-
                 case "smpl":
                     self._bits_per_sample = 16
-                    self._samples = _BinaryReaderEx.read_int16_array_as_float_array(reader, size)
+                    self._samples = _BinaryReaderEx.read_int16_array_as_float_array(
+                        reader, size
+                    )
 
                 case "sm24":
                     reader.seek(size, io.SEEK_CUR)
 
                 case _:
-                    raise Exception("The INFO list contains an unknown ID '" + id + "'.")
-        
+                    raise Exception(
+                        "The INFO list contains an unknown ID '" + id + "'."
+                    )
+
         if self._samples is None:
             raise Exception("No valid sample data was found.")
-        
+
     @property
     def bits_per_sample(self) -> int:
         return self._bits_per_sample
@@ -349,9 +369,7 @@ class _SoundFontSampleData:
         return self._samples
 
 
-
 class _GeneratorType(IntEnum):
-
     START_ADDRESS_OFFSET = 0
     END_ADDRESS_OFFSET = 1
     START_LOOP_ADDRESS_OFFSET = 2
@@ -415,20 +433,16 @@ class _GeneratorType(IntEnum):
     UNUSED_END = 60
 
 
-
 class _Generator:
-
     _generator_type: _GeneratorType
     _value: int
 
     def __init__(self, reader: BufferedReader) -> None:
-        
         self._generator_type = _GeneratorType(_BinaryReaderEx.read_uint16(reader))
         self._value = _BinaryReaderEx.read_int16(reader)
 
     @staticmethod
     def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_Generator"]:
-
         if int(size % 4) != 0:
             raise Exception("The generator list is invalid.")
 
@@ -442,31 +456,26 @@ class _Generator:
         _Generator(reader)
 
         return generators
-    
+
     @property
     def generator_type(self) -> _GeneratorType:
         return self._generator_type
-    
+
     @property
     def value(self) -> int:
         return self._value
 
 
-
 class _Modulator:
-
     @staticmethod
     def discard_data(reader: BufferedReader, size: int) -> None:
-
         if int(size % 10) != 0:
             raise Exception("The modulator list is invalid.")
-        
+
         reader.seek(size, io.SEEK_CUR)
 
 
-
 class _SampleType(IntEnum):
-
     NONE = 0
     MONO = 1
     RIGHT = 2
@@ -478,9 +487,7 @@ class _SampleType(IntEnum):
     ROM_LINKED = 0x8008
 
 
-
 class SampleHeader:
-
     _name: str
     _start: int
     _end: int
@@ -493,7 +500,6 @@ class SampleHeader:
     _sample_type: _SampleType
 
     def __init__(self, reader: BufferedReader) -> None:
-        
         self._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
         self._start = _BinaryReaderEx.read_int32(reader)
         self._end = _BinaryReaderEx.read_int32(reader)
@@ -504,96 +510,95 @@ class SampleHeader:
         self._pitch_correction = _BinaryReaderEx.read_int8(reader)
         self._link = _BinaryReaderEx.read_uint16(reader)
         self._sample_type = _SampleType(_BinaryReaderEx.read_uint16(reader))
-    
+
     @staticmethod
     def _read_from_chunk(reader: BufferedReader, size: int) -> Sequence["SampleHeader"]:
-
         if int(size % 46) != 0:
             raise Exception("The sample header list is invalid.")
-        
+
         count = int(size / 46) - 1
         headers = list[SampleHeader]()
 
         for _ in range(count):
             headers.append(SampleHeader(reader))
-        
+
         # The last one is the terminator.
         SampleHeader(reader)
 
         return headers
-    
+
     @property
     def name(self) -> str:
         return self._name
-    
+
     @property
     def start(self) -> int:
         return self._start
-    
+
     @property
     def end(self) -> int:
         return self._end
-    
+
     @property
     def start_loop(self) -> int:
         return self._start_loop
-    
+
     @property
     def end_loop(self) -> int:
         return self._end_loop
-    
+
     @property
     def sample_rate(self) -> int:
         return self._sample_rate
-    
+
     @property
     def original_pitch(self) -> int:
         return self._original_pitch
-    
+
     @property
     def pitch_correction(self) -> int:
         return self._pitch_correction
 
 
-
 class _ZoneInfo:
-
     _generator_index: int
     _modulator_index: int
     _generator_count: int
     _modulator_count: int
 
     def __init__(self, reader: BufferedReader) -> None:
-
         self._generator_index = _BinaryReaderEx.read_uint16(reader)
         self._modulator_index = _BinaryReaderEx.read_uint16(reader)
 
     @staticmethod
     def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_ZoneInfo"]:
-
         if int(size % 4) != 0:
             raise Exception("The zone list is invalid.")
-        
+
         count = int(size / 4)
         zones = list[_ZoneInfo]()
 
         for i in range(count):
             zones.append(_ZoneInfo(reader))
-        
+
         for i in range(count - 1):
-            zones[i]._generator_count = zones[i + 1]._generator_index - zones[i]._generator_index
-            zones[i]._modulator_count = zones[i + 1]._modulator_index - zones[i]._modulator_index
-        
+            zones[i]._generator_count = (
+                zones[i + 1]._generator_index - zones[i]._generator_index
+            )
+            zones[i]._modulator_count = (
+                zones[i + 1]._modulator_index - zones[i]._modulator_index
+            )
+
         return zones
-    
+
     @property
     def generator_index(self) -> int:
         return self._generator_index
-    
+
     @property
     def modulator_index(self) -> int:
         return self._modulator_index
-    
+
     @property
     def generator_count(self) -> int:
         return self._generator_count
@@ -603,48 +608,44 @@ class _ZoneInfo:
         return self._modulator_count
 
 
-
 class _Zone:
-
     _generators: Sequence[_Generator]
 
     def __init__(self, generators: Sequence[_Generator]) -> None:
         self._generators = generators
 
     @staticmethod
-    def create(infos: Sequence[_ZoneInfo], generators: Sequence[_Generator]) -> Sequence["_Zone"]:
-
+    def create(
+        infos: Sequence[_ZoneInfo], generators: Sequence[_Generator]
+    ) -> Sequence["_Zone"]:
         if len(infos) <= 1:
             raise Exception("No valid zone was found.")
-        
+
         # The last one is the terminator.
         count = len(infos) - 1
         zones = list[_Zone]()
 
         for i in range(count):
-
             info: _ZoneInfo = infos[i]
 
             gs = list[_Generator]()
             for j in range(info.generator_count):
                 gs.append(generators[info.generator_index + j])
-            
+
             zones.append(_Zone(gs))
-        
+
         return zones
-    
+
     @staticmethod
     def empty():
         return _Zone(list[_Generator]())
-    
+
     @property
     def generators(self) -> Sequence[_Generator]:
         return self._generators
 
 
-
 class _PresetInfo:
-
     _name: str
     _patch_number: int
     _bank_number: int
@@ -655,7 +656,6 @@ class _PresetInfo:
     _morphology: int
 
     def __init__(self, reader: BufferedReader) -> None:
-
         self._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
         self._patch_number = _BinaryReaderEx.read_uint16(reader)
         self._bank_number = _BinaryReaderEx.read_uint16(reader)
@@ -666,10 +666,9 @@ class _PresetInfo:
 
     @staticmethod
     def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_PresetInfo"]:
-
         if int(size % 38) != 0:
             raise Exception("The preset list is invalid.")
-    
+
         count = int(size / 38)
         presets = list[_PresetInfo]()
 
@@ -678,17 +677,17 @@ class _PresetInfo:
 
         for i in range(count - 1):
             presets[i]._zone_end_index = presets[i + 1].zone_start_index - 1
-        
+
         return presets
-    
+
     @property
     def name(self) -> str:
         return self._name
-    
+
     @property
     def patch_number(self) -> int:
         return self._patch_number
-    
+
     @property
     def bank_number(self) -> int:
         return self._bank_number
@@ -696,42 +695,40 @@ class _PresetInfo:
     @property
     def zone_start_index(self) -> int:
         return self._zone_start_index
-    
+
     @property
     def zone_end_index(self) -> int:
         return self._zone_end_index
-    
+
     @property
     def library(self) -> int:
         return self._library
-    
+
     @property
     def genre(self) -> int:
         return self._genre
-    
+
     @property
     def morphology(self) -> int:
         return self._morphology
 
 
-
 class _InstrumentInfo:
-
     _name: str
     _zone_start_index: int
     _zone_end_index: int
 
     def __init__(self, reader: BufferedReader) -> None:
-
         self._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
         self._zone_start_index = _BinaryReaderEx.read_uint16(reader)
 
     @staticmethod
-    def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_InstrumentInfo"]:
-
+    def read_from_chunk(
+        reader: BufferedReader, size: int
+    ) -> Sequence["_InstrumentInfo"]:
         if int(size % 22) != 0:
             raise Exception("The instrument list is invalid.")
-    
+
         count = int(size / 22)
         instruments = list[_InstrumentInfo]()
 
@@ -740,80 +737,86 @@ class _InstrumentInfo:
 
         for i in range(count - 1):
             instruments[i]._zone_end_index = instruments[i + 1]._zone_start_index - 1
-        
+
         return instruments
 
     @property
     def name(self) -> str:
         return self._name
-    
+
     @property
     def zone_start_index(self) -> int:
         return self._zone_start_index
-    
+
     @property
     def zone_end_index(self) -> int:
         return self._zone_end_index
 
 
-
 class Instrument:
-
     _name: str
     _regions: Sequence["InstrumentRegion"]
 
-    def __init__(self, info: _InstrumentInfo, zones: Sequence[_Zone], samples: Sequence[SampleHeader]) -> None:
-        
+    def __init__(
+        self,
+        info: _InstrumentInfo,
+        zones: Sequence[_Zone],
+        samples: Sequence[SampleHeader],
+    ) -> None:
         self._name = info.name
 
         zone_count = info.zone_end_index - info.zone_start_index + 1
         if zone_count <= 0:
             raise Exception("The instrument '" + info.name + "' has no zone.")
-        
-        zone_span = zones[info.zone_start_index:info.zone_start_index + zone_count]
+
+        zone_span = zones[info.zone_start_index : info.zone_start_index + zone_count]
 
         self._regions = InstrumentRegion._create(self, zone_span, samples)
 
     @staticmethod
-    def _create(infos: Sequence[_InstrumentInfo], zones: Sequence[_Zone], samples: Sequence[SampleHeader]) -> Sequence["Instrument"]:
-
+    def _create(
+        infos: Sequence[_InstrumentInfo],
+        zones: Sequence[_Zone],
+        samples: Sequence[SampleHeader],
+    ) -> Sequence["Instrument"]:
         if len(infos) <= 1:
             raise Exception("No valid instrument was found.")
-        
+
         # The last one is the terminator.
         count = len(infos) - 1
         instruments = list[Instrument]()
 
         for i in range(count):
             instruments.append(Instrument(infos[i], zones, samples))
-        
+
         return instruments
 
     @property
     def name(self) -> str:
         return self._name
-    
+
     @property
     def regions(self) -> Sequence["InstrumentRegion"]:
         return self._regions
 
 
-
 class LoopMode(IntEnum):
-
     NO_LOOP = 0
     CONTINUOUS = 1
     LOOP_UNTIL_NOTE_OFF = 3
 
 
-
 class InstrumentRegion:
-
     _sample: SampleHeader
     _gs: MutableSequence[int]
 
-    def __init__(self, instrument: Instrument, global_zone: _Zone, local_zone: _Zone, samples: Sequence[SampleHeader]) -> None:
-        
+    def __init__(
+        self,
+        instrument: Instrument,
+        global_zone: _Zone,
+        local_zone: _Zone,
+        samples: Sequence[SampleHeader],
+    ) -> None:
         self._gs = array("h", itertools.repeat(0, 61))
         self._gs[_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY] = 13500
         self._gs[_GeneratorType.DELAY_MODULATION_LFO] = -12000
@@ -840,18 +843,27 @@ class InstrumentRegion:
 
         for generator in local_zone.generators:
             self._set_parameter(generator)
-        
+
         id = self._gs[_GeneratorType.SAMPLE_ID]
         if not (0 <= id and id < len(samples)):
-            raise Exception("The instrument '" + instrument.name + "' contains an invalid sample ID '" + str(id) + "'.")
+            raise Exception(
+                "The instrument '"
+                + instrument.name
+                + "' contains an invalid sample ID '"
+                + str(id)
+                + "'."
+            )
         self._sample = samples[id]
-    
+
     @staticmethod
-    def _create(instrument: Instrument, zones: Sequence[_Zone], samples: Sequence[SampleHeader]) -> Sequence["InstrumentRegion"]:
-
+    def _create(
+        instrument: Instrument, zones: Sequence[_Zone], samples: Sequence[SampleHeader]
+    ) -> Sequence["InstrumentRegion"]:
         # Is the first one the global zone?
-        if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != _GeneratorType.SAMPLE_ID:
-
+        if (
+            len(zones[0].generators) == 0
+            or zones[0].generators[-1].generator_type != _GeneratorType.SAMPLE_ID
+        ):
             # The first one is the global zone.
             global_zone = zones[0]
 
@@ -859,31 +871,36 @@ class InstrumentRegion:
             count = len(zones) - 1
             regions = list[InstrumentRegion]()
             for i in range(count):
-                regions.append(InstrumentRegion(instrument, global_zone, zones[i + 1], samples))
+                regions.append(
+                    InstrumentRegion(instrument, global_zone, zones[i + 1], samples)
+                )
             return regions
 
         else:
-
             # No global zone.
             count = len(zones)
             regions = list[InstrumentRegion]()
             for i in range(count):
-                regions.append(InstrumentRegion(instrument, _Zone.empty(), zones[i], samples))
+                regions.append(
+                    InstrumentRegion(instrument, _Zone.empty(), zones[i], samples)
+                )
             return regions
 
     def _set_parameter(self, generator: _Generator) -> None:
-
         index = int(generator.generator_type)
 
         # Unknown generators should be ignored.
         if 0 <= index and index < len(self._gs):
             self._gs[index] = generator.value
-    
+
     def contains(self, key: int, velocity: int) -> bool:
         contains_key = self.key_range_start <= key and key <= self.key_range_end
-        contains_velocity = self.velocity_range_start <= velocity and velocity <= self.velocity_range_end
+        contains_velocity = (
+            self.velocity_range_start <= velocity
+            and velocity <= self.velocity_range_end
+        )
         return contains_key and contains_velocity
-    
+
     @property
     def sample(self) -> SampleHeader:
         return self._sample
@@ -906,19 +923,31 @@ class InstrumentRegion:
 
     @property
     def start_address_offset(self) -> int:
-        return 32768 * self._gs[_GeneratorType.START_ADDRESS_COARSE_OFFSET] + self._gs[_GeneratorType.START_ADDRESS_OFFSET]
+        return (
+            32768 * self._gs[_GeneratorType.START_ADDRESS_COARSE_OFFSET]
+            + self._gs[_GeneratorType.START_ADDRESS_OFFSET]
+        )
 
     @property
     def end_address_offset(self) -> int:
-        return 32768 * self._gs[_GeneratorType.END_ADDRESS_COARSE_OFFSET] + self._gs[_GeneratorType.END_ADDRESS_OFFSET]
+        return (
+            32768 * self._gs[_GeneratorType.END_ADDRESS_COARSE_OFFSET]
+            + self._gs[_GeneratorType.END_ADDRESS_OFFSET]
+        )
 
     @property
     def start_loop_address_offset(self) -> int:
-        return 32768 * self._gs[_GeneratorType.START_LOOP_ADDRESS_COARSE_OFFSET] + self._gs[_GeneratorType.START_LOOP_ADDRESS_OFFSET]
+        return (
+            32768 * self._gs[_GeneratorType.START_LOOP_ADDRESS_COARSE_OFFSET]
+            + self._gs[_GeneratorType.START_LOOP_ADDRESS_OFFSET]
+        )
 
     @property
     def end_loop_address_offset(self) -> int:
-        return 32768 * self._gs[_GeneratorType.END_LOOP_ADDRESS_COARSE_OFFSET] + self._gs[_GeneratorType.END_LOOP_ADDRESS_OFFSET]
+        return (
+            32768 * self._gs[_GeneratorType.END_LOOP_ADDRESS_COARSE_OFFSET]
+            + self._gs[_GeneratorType.END_LOOP_ADDRESS_OFFSET]
+        )
 
     @property
     def modulation_lfo_to_pitch(self) -> int:
@@ -934,7 +963,9 @@ class InstrumentRegion:
 
     @property
     def initial_filter_cutoff_frequency(self) -> float:
-        return _SoundFontMath.cents_to_hertz(self._gs[_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY])
+        return _SoundFontMath.cents_to_hertz(
+            self._gs[_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY]
+        )
 
     @property
     def initial_filter_q(self) -> float:
@@ -966,35 +997,51 @@ class InstrumentRegion:
 
     @property
     def delay_modulation_lfo(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DELAY_MODULATION_LFO])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.DELAY_MODULATION_LFO]
+        )
 
     @property
     def frequency_modulation_lfo(self) -> float:
-        return _SoundFontMath.cents_to_hertz(self._gs[_GeneratorType.FREQUENCY_MODULATION_LFO])
+        return _SoundFontMath.cents_to_hertz(
+            self._gs[_GeneratorType.FREQUENCY_MODULATION_LFO]
+        )
 
     @property
     def delay_vibrato_lfo(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DELAY_VIBRATO_LFO])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.DELAY_VIBRATO_LFO]
+        )
 
     @property
     def frequency_vibrato_lfo(self) -> float:
-        return _SoundFontMath.cents_to_hertz(self._gs[_GeneratorType.FREQUENCY_VIBRATO_LFO])
+        return _SoundFontMath.cents_to_hertz(
+            self._gs[_GeneratorType.FREQUENCY_VIBRATO_LFO]
+        )
 
     @property
     def delay_modulation_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DELAY_MODULATION_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.DELAY_MODULATION_ENVELOPE]
+        )
 
     @property
     def attack_modulation_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.ATTACK_MODULATION_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.ATTACK_MODULATION_ENVELOPE]
+        )
 
     @property
     def hold_modulation_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.HOLD_MODULATION_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.HOLD_MODULATION_ENVELOPE]
+        )
 
     @property
     def decay_modulation_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DECAY_MODULATION_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.DECAY_MODULATION_ENVELOPE]
+        )
 
     @property
     def sustain_modulation_envelope(self) -> float:
@@ -1002,7 +1049,9 @@ class InstrumentRegion:
 
     @property
     def release_modulation_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.RELEASE_MODULATION_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.RELEASE_MODULATION_ENVELOPE]
+        )
 
     @property
     def key_number_to_modulation_envelope_hold(self) -> int:
@@ -1014,19 +1063,27 @@ class InstrumentRegion:
 
     @property
     def delay_volume_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DELAY_VOLUME_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.DELAY_VOLUME_ENVELOPE]
+        )
 
     @property
     def attack_volume_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.ATTACK_VOLUME_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.ATTACK_VOLUME_ENVELOPE]
+        )
 
     @property
     def hold_volume_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.HOLD_VOLUME_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.HOLD_VOLUME_ENVELOPE]
+        )
 
     @property
     def decay_volume_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.DECAY_VOLUME_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.DECAY_VOLUME_ENVELOPE]
+        )
 
     @property
     def sustain_volume_envelope(self) -> float:
@@ -1034,7 +1091,9 @@ class InstrumentRegion:
 
     @property
     def release_volume_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self._gs[_GeneratorType.RELEASE_VOLUME_ENVELOPE])
+        return _SoundFontMath.timecents_to_seconds(
+            self._gs[_GeneratorType.RELEASE_VOLUME_ENVELOPE]
+        )
 
     @property
     def key_number_to_volume_envelope_hold(self) -> int:
@@ -1074,7 +1133,11 @@ class InstrumentRegion:
 
     @property
     def sample_modes(self) -> LoopMode:
-        return LoopMode(self._gs[_GeneratorType.SAMPLE_MODES]) if self._gs[_GeneratorType.SAMPLE_MODES] != 2 else LoopMode.NO_LOOP
+        return (
+            LoopMode(self._gs[_GeneratorType.SAMPLE_MODES])
+            if self._gs[_GeneratorType.SAMPLE_MODES] != 2
+            else LoopMode.NO_LOOP
+        )
 
     @property
     def scale_tuning(self) -> int:
@@ -1086,12 +1149,14 @@ class InstrumentRegion:
 
     @property
     def root_key(self) -> int:
-        return self._gs[_GeneratorType.OVERRIDING_ROOT_KEY] if self._gs[_GeneratorType.OVERRIDING_ROOT_KEY] != -1 else self._sample.original_pitch
-
+        return (
+            self._gs[_GeneratorType.OVERRIDING_ROOT_KEY]
+            if self._gs[_GeneratorType.OVERRIDING_ROOT_KEY] != -1
+            else self._sample.original_pitch
+        )
 
 
 class Preset:
-
     _name: str
     _patch_number: int
     _bank_number: int
@@ -1100,8 +1165,12 @@ class Preset:
     _morphology: int
     _regions: Sequence["PresetRegion"]
 
-    def __init__(self, info: _PresetInfo, zones: Sequence[_Zone], instruments: Sequence[Instrument]) -> None:
-        
+    def __init__(
+        self,
+        info: _PresetInfo,
+        zones: Sequence[_Zone],
+        instruments: Sequence[Instrument],
+    ) -> None:
         self._name = info.name
         self._patch_number = info.patch_number
         self._bank_number = info.bank_number
@@ -1112,84 +1181,99 @@ class Preset:
         zone_count = info.zone_end_index - info.zone_start_index + 1
         if zone_count <= 0:
             raise Exception("The preset '" + info.name + "' has no zone.")
-        
-        zone_span = zones[info.zone_start_index:info.zone_start_index + zone_count]
+
+        zone_span = zones[info.zone_start_index : info.zone_start_index + zone_count]
 
         self._regions = PresetRegion._create(self, zone_span, instruments)
 
     @staticmethod
-    def _create(infos: Sequence[_PresetInfo], zones: Sequence[_Zone], instruments: Sequence[Instrument]) -> Sequence["Preset"]:
-
+    def _create(
+        infos: Sequence[_PresetInfo],
+        zones: Sequence[_Zone],
+        instruments: Sequence[Instrument],
+    ) -> Sequence["Preset"]:
         if len(infos) <= 1:
             raise Exception("No valid preset was found.")
-        
+
         # The last one is the terminator.
         count = len(infos) - 1
         presets = list[Preset]()
 
         for i in range(count):
             presets.append(Preset(infos[i], zones, instruments))
-        
+
         return presets
-    
+
     @property
     def name(self) -> str:
         return self._name
-    
+
     @property
     def patch_number(self) -> int:
         return self._patch_number
-    
+
     @property
     def bank_number(self) -> int:
         return self._bank_number
-    
+
     @property
     def library(self) -> int:
         return self._library
-    
+
     @property
     def genre(self) -> int:
         return self._genre
-    
+
     @property
     def morphology(self) -> int:
         return self._morphology
-    
+
     @property
     def regions(self) -> Sequence["PresetRegion"]:
         return self._regions
 
 
-
 class PresetRegion:
-
     _instrument: Instrument
     _gs: MutableSequence[int]
 
-    def __init__(self, preset: Preset, global_zone: _Zone, local_zone: _Zone, instruments: Sequence[Instrument]) -> None:
-        
+    def __init__(
+        self,
+        preset: Preset,
+        global_zone: _Zone,
+        local_zone: _Zone,
+        instruments: Sequence[Instrument],
+    ) -> None:
         self._gs = array("h", itertools.repeat(0, 61))
         self._gs[_GeneratorType.KEY_RANGE] = 0x7F00
         self._gs[_GeneratorType.VELOCITY_RANGE] = 0x7F00
 
         for generator in global_zone.generators:
             self._set_parameter(generator)
-        
+
         for generator in local_zone.generators:
             self._set_parameter(generator)
-        
+
         id = self._gs[_GeneratorType.INSTRUMENT]
         if not (0 <= id and id < len(instruments)):
-            raise Exception("The preset '" + preset.name + "' contains an invalid instrument ID '" + str(id) + "'.")
+            raise Exception(
+                "The preset '"
+                + preset.name
+                + "' contains an invalid instrument ID '"
+                + str(id)
+                + "'."
+            )
         self._instrument = instruments[id]
-    
+
     @staticmethod
-    def _create(preset: Preset, zones: Sequence[_Zone], instruments: Sequence[Instrument]) -> Sequence["PresetRegion"]:
-
+    def _create(
+        preset: Preset, zones: Sequence[_Zone], instruments: Sequence[Instrument]
+    ) -> Sequence["PresetRegion"]:
         # Is the first one the global zone?
-        if len(zones[0].generators) == 0 or zones[0].generators[-1].generator_type != _GeneratorType.INSTRUMENT:
-
+        if (
+            len(zones[0].generators) == 0
+            or zones[0].generators[-1].generator_type != _GeneratorType.INSTRUMENT
+        ):
             # The first one is the global zone.
             global_zone = zones[0]
 
@@ -1197,31 +1281,36 @@ class PresetRegion:
             count = len(zones) - 1
             regions = list[PresetRegion]()
             for i in range(count):
-                regions.append(PresetRegion(preset, global_zone, zones[i + 1], instruments))
+                regions.append(
+                    PresetRegion(preset, global_zone, zones[i + 1], instruments)
+                )
             return regions
 
         else:
-
             # No global zone.
             count = len(zones)
             regions = list[PresetRegion]()
             for i in range(count):
-                regions.append(PresetRegion(preset, _Zone.empty(), zones[i], instruments))
+                regions.append(
+                    PresetRegion(preset, _Zone.empty(), zones[i], instruments)
+                )
             return regions
 
     def _set_parameter(self, generator: _Generator) -> None:
-
         index = int(generator.generator_type)
 
         # Unknown generators should be ignored.
         if 0 <= index and index < len(self._gs):
             self._gs[index] = generator.value
-    
+
     def contains(self, key: int, velocity: int) -> bool:
         contains_key = self.key_range_start <= key and key <= self.key_range_end
-        contains_velocity = self.velocity_range_start <= velocity and velocity <= self.velocity_range_end
+        contains_velocity = (
+            self.velocity_range_start <= velocity
+            and velocity <= self.velocity_range_end
+        )
         return contains_key and contains_velocity
-    
+
     @property
     def instrument(self) -> Instrument:
         return self._instrument
@@ -1240,7 +1329,9 @@ class PresetRegion:
 
     @property
     def initial_filter_cutoff_frequency(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY]
+        )
 
     @property
     def initial_filter_q(self) -> float:
@@ -1272,35 +1363,51 @@ class PresetRegion:
 
     @property
     def delay_modulation_lfo(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DELAY_MODULATION_LFO])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.DELAY_MODULATION_LFO]
+        )
 
     @property
     def frequency_modulation_lfo(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.FREQUENCY_MODULATION_LFO])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.FREQUENCY_MODULATION_LFO]
+        )
 
     @property
     def delay_vibrato_lfo(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DELAY_VIBRATO_LFO])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.DELAY_VIBRATO_LFO]
+        )
 
     @property
     def frequency_vibrato_lfo(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.FREQUENCY_VIBRATO_LFO])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.FREQUENCY_VIBRATO_LFO]
+        )
 
     @property
     def delay_modulation_envelope(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DELAY_MODULATION_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.DELAY_MODULATION_ENVELOPE]
+        )
 
     @property
     def attack_modulation_envelope(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.ATTACK_MODULATION_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.ATTACK_MODULATION_ENVELOPE]
+        )
 
     @property
     def hold_modulation_envelope(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.HOLD_MODULATION_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.HOLD_MODULATION_ENVELOPE]
+        )
 
     @property
     def decay_modulation_envelope(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DECAY_MODULATION_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.DECAY_MODULATION_ENVELOPE]
+        )
 
     @property
     def sustain_modulation_envelope(self) -> float:
@@ -1308,7 +1415,9 @@ class PresetRegion:
 
     @property
     def release_modulation_envelope(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.RELEASE_MODULATION_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.RELEASE_MODULATION_ENVELOPE]
+        )
 
     @property
     def key_number_to_modulation_envelope_hold(self) -> int:
@@ -1320,19 +1429,27 @@ class PresetRegion:
 
     @property
     def delay_volume_envelope(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DELAY_VOLUME_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.DELAY_VOLUME_ENVELOPE]
+        )
 
     @property
     def attack_volume_envelope(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.ATTACK_VOLUME_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.ATTACK_VOLUME_ENVELOPE]
+        )
 
     @property
     def hold_volume_envelope(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.HOLD_VOLUME_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.HOLD_VOLUME_ENVELOPE]
+        )
 
     @property
     def decay_volume_envelope(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.DECAY_VOLUME_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.DECAY_VOLUME_ENVELOPE]
+        )
 
     @property
     def sustain_volume_envelope(self) -> float:
@@ -1340,7 +1457,9 @@ class PresetRegion:
 
     @property
     def release_volume_envelope(self) -> float:
-        return _SoundFontMath.cents_to_multiplying_factor(self._gs[_GeneratorType.RELEASE_VOLUME_ENVELOPE])
+        return _SoundFontMath.cents_to_multiplying_factor(
+            self._gs[_GeneratorType.RELEASE_VOLUME_ENVELOPE]
+        )
 
     @property
     def key_number_to_volume_envelope_hold(self) -> int:
@@ -1383,24 +1502,25 @@ class PresetRegion:
         return self._gs[_GeneratorType.SCALE_TUNING]
 
 
-
 class _SoundFontParameters:
-
     _sample_headers: Sequence[SampleHeader]
     _presets: Sequence[Preset]
     _instruments: Sequence[Instrument]
 
     def __init__(self, reader: BufferedReader) -> None:
-        
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
-        
+
         end = reader.tell() + _BinaryReaderEx.read_int32(reader)
 
         list_type = _BinaryReaderEx.read_four_cc(reader)
         if list_type != "pdta":
-            raise Exception("The type of the LIST chunk must be 'pdta', but was '" + list_type + "'.")
+            raise Exception(
+                "The type of the LIST chunk must be 'pdta', but was '"
+                + list_type
+                + "'."
+            )
 
         preset_infos: Optional[Sequence[_PresetInfo]] = None
         preset_bag: Optional[Sequence[_ZoneInfo]] = None
@@ -1411,12 +1531,10 @@ class _SoundFontParameters:
         sample_headers: Optional[Sequence[SampleHeader]] = None
 
         while reader.tell() < end:
-
             id = _BinaryReaderEx.read_four_cc(reader)
             size = _BinaryReaderEx.read_uint32(reader)
 
             match id:
-
                 case "phdr":
                     preset_infos = _PresetInfo.read_from_chunk(reader, size)
 
@@ -1445,33 +1563,37 @@ class _SoundFontParameters:
                     sample_headers = SampleHeader._read_from_chunk(reader, size)
 
                 case _:
-                    raise Exception("The INFO list contains an unknown ID '" + id + "'.")
+                    raise Exception(
+                        "The INFO list contains an unknown ID '" + id + "'."
+                    )
 
         if preset_infos is None:
             raise Exception("The PHDR sub-chunk was not found.")
-        
+
         if preset_bag is None:
             raise Exception("The PBAG sub-chunk was not found.")
-        
+
         if preset_generators is None:
             raise Exception("The PGEN sub-chunk was not found.")
-        
+
         if instrument_infos is None:
             raise Exception("The INST sub-chunk was not found.")
-        
+
         if instrument_bag is None:
             raise Exception("The IBAG sub-chunk was not found.")
-        
+
         if instrument_generators is None:
             raise Exception("The IGEN sub-chunk was not found.")
-        
+
         if sample_headers is None:
             raise Exception("The SHDR sub-chunk was not found.")
 
         self._sample_headers = sample_headers
-        
+
         instrument_zones = _Zone.create(instrument_bag, instrument_generators)
-        self._instruments = Instrument._create(instrument_infos, instrument_zones, sample_headers)
+        self._instruments = Instrument._create(
+            instrument_infos, instrument_zones, sample_headers
+        )
 
         preset_zones = _Zone.create(preset_bag, preset_generators)
         self._presets = Preset._create(preset_infos, preset_zones, self._instruments)
@@ -1479,19 +1601,17 @@ class _SoundFontParameters:
     @property
     def sample_headers(self) -> Sequence[SampleHeader]:
         return self._sample_headers
-    
+
     @property
     def presets(self) -> Sequence[Preset]:
         return self._presets
-    
+
     @property
     def instruments(self) -> Sequence[Instrument]:
         return self._instruments
 
 
-
 class SoundFont:
-
     _info: SoundFontInfo
     _bits_per_sample: int
     _wave_data: Sequence[float]
@@ -1500,7 +1620,6 @@ class SoundFont:
     _instruments: Sequence[Instrument]
 
     def __init__(self, reader: BufferedReader) -> None:
-
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "RIFF":
             raise Exception("The RIFF chunk was not found.")
@@ -1509,8 +1628,12 @@ class SoundFont:
 
         form_type = _BinaryReaderEx.read_four_cc(reader)
         if form_type != "sfbk":
-            raise Exception("The type of the RIFF chunk must be 'sfbk', but was '" + form_type + "'.")
-        
+            raise Exception(
+                "The type of the RIFF chunk must be 'sfbk', but was '"
+                + form_type
+                + "'."
+            )
+
         self._info = SoundFontInfo(reader)
 
         sample_data = _SoundFontSampleData(reader)
@@ -1525,46 +1648,43 @@ class SoundFont:
     @property
     def info(self) -> SoundFontInfo:
         return self._info
-    
+
     @property
     def wave_data(self) -> Sequence[float]:
         return self._wave_data
-    
+
     @property
     def sample_headers(self) -> Sequence[SampleHeader]:
         return self._sample_headers
-    
+
     @property
     def presets(self) -> Sequence[Preset]:
         return self._presets
-    
+
     @property
     def instruments(self) -> Sequence[Instrument]:
         return self._instruments
 
 
-
 class _RegionPair:
-
     _preset: PresetRegion
     _instrument: InstrumentRegion
 
     def __init__(self, preset: PresetRegion, instrument: InstrumentRegion) -> None:
-
         self._preset = preset
         self._instrument = instrument
-    
+
     def get_value(self, generator_type: _GeneratorType) -> int:
         return self._preset._gs[generator_type] + self._instrument._gs[generator_type]
-    
+
     @property
     def preset(self) -> PresetRegion:
         return self._preset
-    
+
     @property
     def instrument(self) -> InstrumentRegion:
         return self._instrument
-    
+
     @property
     def sample_start(self) -> int:
         return self._instrument.sample_start
@@ -1611,7 +1731,9 @@ class _RegionPair:
 
     @property
     def initial_filter_cutoff_frequency(self) -> float:
-        return _SoundFontMath.cents_to_hertz(self.get_value(_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY))
+        return _SoundFontMath.cents_to_hertz(
+            self.get_value(_GeneratorType.INITIAL_FILTER_CUTOFF_FREQUENCY)
+        )
 
     @property
     def initial_filter_q(self) -> float:
@@ -1623,7 +1745,9 @@ class _RegionPair:
 
     @property
     def modulation_envelope_to_filter_cutoff_frequency(self) -> int:
-        return self.get_value(_GeneratorType.MODULATION_ENVELOPE_TO_FILTER_CUTOFF_FREQUENCY)
+        return self.get_value(
+            _GeneratorType.MODULATION_ENVELOPE_TO_FILTER_CUTOFF_FREQUENCY
+        )
 
     @property
     def modulation_lfo_to_volume(self) -> float:
@@ -1643,35 +1767,51 @@ class _RegionPair:
 
     @property
     def delay_modulation_lfo(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.DELAY_MODULATION_LFO))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.DELAY_MODULATION_LFO)
+        )
 
     @property
     def frequency_modulation_lfo(self) -> float:
-        return _SoundFontMath.cents_to_hertz(self.get_value(_GeneratorType.FREQUENCY_MODULATION_LFO))
+        return _SoundFontMath.cents_to_hertz(
+            self.get_value(_GeneratorType.FREQUENCY_MODULATION_LFO)
+        )
 
     @property
     def delay_vibrato_lfo(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.DELAY_VIBRATO_LFO))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.DELAY_VIBRATO_LFO)
+        )
 
     @property
     def frequency_vibrato_lfo(self) -> float:
-        return _SoundFontMath.cents_to_hertz(self.get_value(_GeneratorType.FREQUENCY_VIBRATO_LFO))
+        return _SoundFontMath.cents_to_hertz(
+            self.get_value(_GeneratorType.FREQUENCY_VIBRATO_LFO)
+        )
 
     @property
     def delay_modulation_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.DELAY_MODULATION_ENVELOPE))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.DELAY_MODULATION_ENVELOPE)
+        )
 
     @property
     def attack_modulation_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.ATTACK_MODULATION_ENVELOPE))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.ATTACK_MODULATION_ENVELOPE)
+        )
 
     @property
     def hold_modulation_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.HOLD_MODULATION_ENVELOPE))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.HOLD_MODULATION_ENVELOPE)
+        )
 
     @property
     def decay_modulation_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.DECAY_MODULATION_ENVELOPE))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.DECAY_MODULATION_ENVELOPE)
+        )
 
     @property
     def sustain_modulation_envelope(self) -> float:
@@ -1679,7 +1819,9 @@ class _RegionPair:
 
     @property
     def release_modulation_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.RELEASE_MODULATION_ENVELOPE))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.RELEASE_MODULATION_ENVELOPE)
+        )
 
     @property
     def key_number_to_modulation_envelope_hold(self) -> int:
@@ -1691,19 +1833,27 @@ class _RegionPair:
 
     @property
     def delay_volume_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.DELAY_VOLUME_ENVELOPE))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.DELAY_VOLUME_ENVELOPE)
+        )
 
     @property
     def attack_volume_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.ATTACK_VOLUME_ENVELOPE))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.ATTACK_VOLUME_ENVELOPE)
+        )
 
     @property
     def hold_volume_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.HOLD_VOLUME_ENVELOPE))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.HOLD_VOLUME_ENVELOPE)
+        )
 
     @property
     def decay_volume_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.DECAY_VOLUME_ENVELOPE))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.DECAY_VOLUME_ENVELOPE)
+        )
 
     @property
     def sustain_volume_envelope(self) -> float:
@@ -1711,7 +1861,9 @@ class _RegionPair:
 
     @property
     def release_volume_envelope(self) -> float:
-        return _SoundFontMath.timecents_to_seconds(self.get_value(_GeneratorType.RELEASE_VOLUME_ENVELOPE))
+        return _SoundFontMath.timecents_to_seconds(
+            self.get_value(_GeneratorType.RELEASE_VOLUME_ENVELOPE)
+        )
 
     @property
     def key_number_to_volume_envelope_hold(self) -> int:
@@ -1731,7 +1883,10 @@ class _RegionPair:
 
     @property
     def fine_tune(self) -> int:
-        return self.get_value(_GeneratorType.FINE_TUNE) + self._instrument.sample.pitch_correction
+        return (
+            self.get_value(_GeneratorType.FINE_TUNE)
+            + self._instrument.sample.pitch_correction
+        )
 
     @property
     def sample_modes(self) -> LoopMode:
@@ -1750,9 +1905,7 @@ class _RegionPair:
         return self._instrument.root_key
 
 
-
 class _Oscillator:
-
     _synthesizer: "Synthesizer"
 
     _data: Sequence[float]
@@ -1775,8 +1928,20 @@ class _Oscillator:
     def __init__(self, synthesizer: "Synthesizer") -> None:
         self._synthesizer = synthesizer
 
-    def start(self, data: Sequence[float], loop_mode: LoopMode, sample_rate: int, start: int, end: int, start_loop: int, end_loop: int, root_key: int, coarse_tune: int, fine_tune: int, scale_tuning: int) -> None:
-
+    def start(
+        self,
+        data: Sequence[float],
+        loop_mode: LoopMode,
+        sample_rate: int,
+        start: int,
+        end: int,
+        start_loop: int,
+        end_loop: int,
+        root_key: int,
+        coarse_tune: int,
+        fine_tune: int,
+        scale_tuning: int,
+    ) -> None:
         self._data = data
         self._loop_mode = loop_mode
         self._sample_rate = sample_rate
@@ -1794,31 +1959,28 @@ class _Oscillator:
             self._looping = False
         else:
             self._looping = True
-        
-        self._position = start
-    
-    def release(self) -> None:
 
+        self._position = start
+
+    def release(self) -> None:
         if self._loop_mode == LoopMode.LOOP_UNTIL_NOTE_OFF:
             self._looping = False
-    
-    def process(self, block: MutableSequence[float], pitch: float) -> bool:
 
+    def process(self, block: MutableSequence[float], pitch: float) -> bool:
         pitch_change = self._pitch_change_scale * (pitch - self._root_key) + self._tune
         pitch_ratio = self._sample_rate_ratio * math.pow(2.0, pitch_change / 12.0)
         return self.fill_block(block, pitch_ratio)
-    
-    def fill_block(self, block: MutableSequence[float], pitch_ratio: float) -> bool:
 
+    def fill_block(self, block: MutableSequence[float], pitch_ratio: float) -> bool:
         if self._looping:
             return self.fill_block_continuous(block, pitch_ratio)
         else:
             return self.fill_block_no_loop(block, pitch_ratio)
-    
-    def fill_block_no_loop(self, block: MutableSequence[float], pitch_ratio: float) -> bool:
 
+    def fill_block_no_loop(
+        self, block: MutableSequence[float], pitch_ratio: float
+    ) -> bool:
         for t in range(len(block)):
-
             index = int(self._position)
 
             if index >= self._end:
@@ -1837,15 +1999,15 @@ class _Oscillator:
             self._position += pitch_ratio
 
         return True
-    
-    def fill_block_continuous(self, block: MutableSequence[float], pitch_ratio: float) -> bool:
 
+    def fill_block_continuous(
+        self, block: MutableSequence[float], pitch_ratio: float
+    ) -> bool:
         end_loop_position = float(self._end_loop)
 
         loop_length = self._end_loop - self._start_loop
 
         for t in range(len(block)):
-
             if self._position >= end_loop_position:
                 self._position -= loop_length
 
@@ -1865,9 +2027,7 @@ class _Oscillator:
         return True
 
 
-
 class _EnvelopeStage(IntEnum):
-
     DELAY = 0
     ATTACK = 1
     HOLD = 2
@@ -1875,9 +2035,7 @@ class _EnvelopeStage(IntEnum):
     RELEASE = 4
 
 
-
 class _VolumeEnvelope:
-
     _synthesizer: "Synthesizer"
 
     _attack_slope: float
@@ -1900,9 +2058,16 @@ class _VolumeEnvelope:
 
     def __init__(self, synthesizer: "Synthesizer") -> None:
         self._synthesizer = synthesizer
-    
-    def start(self, delay: float, attack: float, hold: float, decay: float, sustain: float, release: float) -> None:
 
+    def start(
+        self,
+        delay: float,
+        attack: float,
+        hold: float,
+        decay: float,
+        sustain: float,
+        release: float,
+    ) -> None:
         self._attack_slope = 1 / attack
         self._decay_slope = -9.226 / decay
         self._release_slope = -9.226 / release
@@ -1922,23 +2087,23 @@ class _VolumeEnvelope:
         self.process(0)
 
     def release(self) -> None:
-
         self._stage = _EnvelopeStage.RELEASE
-        self._release_start_time = float(self._processed_sample_count) / self._synthesizer.sample_rate
+        self._release_start_time = (
+            float(self._processed_sample_count) / self._synthesizer.sample_rate
+        )
         self._release_level = self._value
-    
-    def process(self, sample_count: int) -> bool:
 
+    def process(self, sample_count: int) -> bool:
         self._processed_sample_count += sample_count
 
-        current_time = float(self._processed_sample_count) / self._synthesizer.sample_rate
+        current_time = (
+            float(self._processed_sample_count) / self._synthesizer.sample_rate
+        )
 
         while self._stage <= _EnvelopeStage.HOLD:
-
             end_time: float
 
             match self._stage:
-
                 case _EnvelopeStage.DELAY:
                     end_time = self._attack_start_time
 
@@ -1957,14 +2122,15 @@ class _VolumeEnvelope:
                 self._stage = _EnvelopeStage(self._stage.value + 1)
 
         match self._stage:
-
             case _EnvelopeStage.DELAY:
                 self._value = 0
                 self._priority = 4 + self._value
                 return True
 
             case _EnvelopeStage.ATTACK:
-                self._value = self._attack_slope * (current_time - self._attack_start_time)
+                self._value = self._attack_slope * (
+                    current_time - self._attack_start_time
+                )
                 self._priority = 3 + self._value
                 return True
 
@@ -1974,12 +2140,19 @@ class _VolumeEnvelope:
                 return True
 
             case _EnvelopeStage.DECAY:
-                self._value = max(_SoundFontMath.exp_cutoff(self._decay_slope * (current_time - self._decay_start_time)), self._sustain_level)
+                self._value = max(
+                    _SoundFontMath.exp_cutoff(
+                        self._decay_slope * (current_time - self._decay_start_time)
+                    ),
+                    self._sustain_level,
+                )
                 self._priority = 1 + self._value
                 return self._value > _SoundFontMath.non_audible()
 
             case _EnvelopeStage.RELEASE:
-                self._value = self._release_level * _SoundFontMath.exp_cutoff(self._release_slope * (current_time - self._release_start_time))
+                self._value = self._release_level * _SoundFontMath.exp_cutoff(
+                    self._release_slope * (current_time - self._release_start_time)
+                )
                 self._priority = self._value
                 return self._value > _SoundFontMath.non_audible()
 
@@ -1989,15 +2162,13 @@ class _VolumeEnvelope:
     @property
     def value(self) -> float:
         return self._value
-    
+
     @property
     def priority(self) -> float:
         return self._priority
 
 
-
 class _ModulationEnvelope:
-
     _synthesizer: "Synthesizer"
 
     _attack_slope: float
@@ -2020,9 +2191,16 @@ class _ModulationEnvelope:
 
     def __init__(self, synthesizer: "Synthesizer") -> None:
         self._synthesizer = synthesizer
-    
-    def start(self, delay: float, attack: float, hold: float, decay: float, sustain: float, release: float) -> None:
 
+    def start(
+        self,
+        delay: float,
+        attack: float,
+        hold: float,
+        decay: float,
+        sustain: float,
+        release: float,
+    ) -> None:
         self._attack_slope = 1 / attack
         self._decay_slope = 1 / decay
         self._release_slope = 1 / release
@@ -2044,23 +2222,23 @@ class _ModulationEnvelope:
         self.process(0)
 
     def release(self) -> None:
-
         self._stage = _EnvelopeStage.RELEASE
-        self._release_end_time += float(self._processed_sample_count) / self._synthesizer.sample_rate
+        self._release_end_time += (
+            float(self._processed_sample_count) / self._synthesizer.sample_rate
+        )
         self._release_level = self._value
-    
-    def process(self, sample_count: int) -> bool:
 
+    def process(self, sample_count: int) -> bool:
         self._processed_sample_count += sample_count
 
-        current_time = float(self._processed_sample_count) / self._synthesizer.sample_rate
+        current_time = (
+            float(self._processed_sample_count) / self._synthesizer.sample_rate
+        )
 
         while self._stage <= _EnvelopeStage.HOLD:
-
             end_time: float
 
             match self._stage:
-
                 case _EnvelopeStage.DELAY:
                     end_time = self._attack_start_time
 
@@ -2079,13 +2257,14 @@ class _ModulationEnvelope:
                 self._stage = _EnvelopeStage(self._stage.value + 1)
 
         match self._stage:
-
             case _EnvelopeStage.DELAY:
                 self._value = 0
                 return True
 
             case _EnvelopeStage.ATTACK:
-                self._value = self._attack_slope * (current_time - self._attack_start_time)
+                self._value = self._attack_slope * (
+                    current_time - self._attack_start_time
+                )
                 return True
 
             case _EnvelopeStage.HOLD:
@@ -2093,24 +2272,30 @@ class _ModulationEnvelope:
                 return True
 
             case _EnvelopeStage.DECAY:
-                self._value = max(self._decay_slope * (self._decay_end_time - current_time), self._sustain_level)
+                self._value = max(
+                    self._decay_slope * (self._decay_end_time - current_time),
+                    self._sustain_level,
+                )
                 return self._value > _SoundFontMath.non_audible()
 
             case _EnvelopeStage.RELEASE:
-                self._value = max(self._release_level * self._release_slope * (self._release_end_time - current_time), 0)
+                self._value = max(
+                    self._release_level
+                    * self._release_slope
+                    * (self._release_end_time - current_time),
+                    0,
+                )
                 return self._value > _SoundFontMath.non_audible()
 
             case _:
                 raise Exception("Invalid envelope stage.")
-    
+
     @property
     def value(self) -> float:
         return self._value
 
 
-
 class _Lfo:
-
     _synthesizer: "Synthesizer"
 
     _active: bool
@@ -2123,11 +2308,9 @@ class _Lfo:
 
     def __init__(self, synthesizer: "Synthesizer") -> None:
         self._synthesizer = synthesizer
-    
+
     def start(self, delay: float, frequency: float) -> None:
-
-        if frequency > 1.0E-3:
-
+        if frequency > 1.0e-3:
             self._active = True
 
             self._delay = delay
@@ -2137,25 +2320,23 @@ class _Lfo:
             self._value = 0
 
         else:
-
             self._active = False
             self._value = 0
-    
-    def process(self) -> None:
 
+    def process(self) -> None:
         if not self._active:
             return
 
         self._processed_sample_count += self._synthesizer.block_size
 
-        current_time = float(self._processed_sample_count) / self._synthesizer.sample_rate
+        current_time = (
+            float(self._processed_sample_count) / self._synthesizer.sample_rate
+        )
 
         if current_time < self._delay:
-
             self._value = 0
 
         else:
-
             phase = ((current_time - self._delay) % self._period) / self._period
             if phase < 0.25:
                 self._value = 4 * phase
@@ -2169,12 +2350,11 @@ class _Lfo:
         return self._value
 
 
-
 class _RegionEx:
-
     @staticmethod
-    def start_oscillator(oscillator: _Oscillator, data: Sequence[float], region: _RegionPair) -> None:
-        
+    def start_oscillator(
+        oscillator: _Oscillator, data: Sequence[float], region: _RegionPair
+    ) -> None:
         sample_rate = region.instrument.sample.sample_rate
         loop_mode = region.sample_modes
         start = region.sample_start
@@ -2186,48 +2366,82 @@ class _RegionEx:
         fine_tune = region.fine_tune
         scale_tuning = region.scale_tuning
 
-        oscillator.start(data, loop_mode, sample_rate, start, end, start_loop, end_Loop, root_key, coarse_tune, fine_tune, scale_tuning)
-    
-    @staticmethod
-    def start_volume_envelope(envelope: _VolumeEnvelope, region: _RegionPair, key: int, velocity: int) -> None:
+        oscillator.start(
+            data,
+            loop_mode,
+            sample_rate,
+            start,
+            end,
+            start_loop,
+            end_Loop,
+            root_key,
+            coarse_tune,
+            fine_tune,
+            scale_tuning,
+        )
 
+    @staticmethod
+    def start_volume_envelope(
+        envelope: _VolumeEnvelope, region: _RegionPair, key: int, velocity: int
+    ) -> None:
         # If the release time is shorter than 10 ms, it will be clamped to 10 ms to avoid pop noise.
 
         delay = region.delay_volume_envelope
         attack = region.attack_volume_envelope
-        hold = region.hold_volume_envelope * _SoundFontMath.key_number_to_multiplying_factor(region.key_number_to_volume_envelope_hold, key)
-        decay = region.decay_volume_envelope * _SoundFontMath.key_number_to_multiplying_factor(region.key_number_to_volume_envelope_decay, key)
+        hold = (
+            region.hold_volume_envelope
+            * _SoundFontMath.key_number_to_multiplying_factor(
+                region.key_number_to_volume_envelope_hold, key
+            )
+        )
+        decay = (
+            region.decay_volume_envelope
+            * _SoundFontMath.key_number_to_multiplying_factor(
+                region.key_number_to_volume_envelope_decay, key
+            )
+        )
         sustain = _SoundFontMath.decibels_to_linear(-region.sustain_volume_envelope)
         release = max(region.release_volume_envelope, 0.01)
 
         envelope.start(delay, attack, hold, decay, sustain, release)
-    
-    @staticmethod
-    def start_modulation_envelope(envelope: _ModulationEnvelope, region: _RegionPair, key: int, velocity: int) -> None:
 
+    @staticmethod
+    def start_modulation_envelope(
+        envelope: _ModulationEnvelope, region: _RegionPair, key: int, velocity: int
+    ) -> None:
         # According to the implementation of TinySoundFont, the attack time should be adjusted by the velocity.
 
         delay = region.delay_modulation_envelope
         attack = region.attack_modulation_envelope * ((145 - velocity) / 144.0)
-        hold = region.hold_modulation_envelope * _SoundFontMath.key_number_to_multiplying_factor(region.key_number_to_modulation_envelope_hold, key)
-        decay = region.decay_modulation_envelope * _SoundFontMath.key_number_to_multiplying_factor(region.key_number_to_modulation_envelope_decay, key)
+        hold = (
+            region.hold_modulation_envelope
+            * _SoundFontMath.key_number_to_multiplying_factor(
+                region.key_number_to_modulation_envelope_hold, key
+            )
+        )
+        decay = (
+            region.decay_modulation_envelope
+            * _SoundFontMath.key_number_to_multiplying_factor(
+                region.key_number_to_modulation_envelope_decay, key
+            )
+        )
         sustain = 1.0 - region.sustain_modulation_envelope / 100.0
         release = region.release_modulation_envelope
 
         envelope.start(delay, attack, hold, decay, sustain, release)
-    
+
     @staticmethod
     def start_vibrato(lfo: _Lfo, region: _RegionPair, key: int, velocity: int) -> None:
         lfo.start(region.delay_vibrato_lfo, region.frequency_vibrato_lfo)
-    
+
     @staticmethod
-    def start_modulation(lfo: _Lfo, region: _RegionPair, key: int, velocity: int) -> None:
+    def start_modulation(
+        lfo: _Lfo, region: _RegionPair, key: int, velocity: int
+    ) -> None:
         lfo.start(region.delay_modulation_lfo, region.frequency_modulation_lfo)
 
 
-
 class _BiQuadFilter:
-
     _synthesizer: "Synthesizer"
 
     _resonance_peak_offset: float
@@ -2250,16 +2464,13 @@ class _BiQuadFilter:
         self._resonance_peak_offset = 1.0 - 1.0 / math.sqrt(2.0)
 
     def clear_buffer(self) -> None:
-
         self._x1 = 0
         self._x2 = 0
         self._y1 = 0
         self._y2 = 0
-    
+
     def set_low_pass_filter(self, cutoff_frequency: float, resonance: float) -> None:
-
         if cutoff_frequency < 0.499 * self._synthesizer.sample_rate:
-
             self._active = True
 
             # This equation gives the Q value which makes the desired resonance peak.
@@ -2283,13 +2494,16 @@ class _BiQuadFilter:
             self._active = False
 
     def process(self, block: MutableSequence[float]) -> None:
-
         if self._active:
-
             for t in range(len(block)):
-
                 input = block[t]
-                output = self._a0 * input + self._a1 * self._x1 + self._a2 * self._x2 - self._a3 * self._y1 - self._a4 * self._y2
+                output = (
+                    self._a0 * input
+                    + self._a1 * self._x1
+                    + self._a2 * self._x2
+                    - self._a3 * self._y1
+                    - self._a4 * self._y2
+                )
 
                 self._x2 = self._x1
                 self._x1 = input
@@ -2299,14 +2513,14 @@ class _BiQuadFilter:
                 block[t] = output
 
         else:
-
             self._x2 = block[len(block) - 2]
             self._x1 = block[len(block) - 1]
             self._y2 = self._x2
             self._y1 = self._x1
 
-    def set_coefficients(self, a0: float, a1: float, a2: float, b0: float, b1: float, b2: float) -> None:
-
+    def set_coefficients(
+        self, a0: float, a1: float, a2: float, b0: float, b1: float, b2: float
+    ) -> None:
         self._a0 = b0 / a0
         self._a1 = b1 / a0
         self._a2 = b2 / a0
@@ -2314,9 +2528,7 @@ class _BiQuadFilter:
         self._a4 = a2 / a0
 
 
-
 class _Channel:
-
     _synthesizer: "Synthesizer"
     _is_percussion_channel: bool
 
@@ -2340,14 +2552,12 @@ class _Channel:
     _pitch_bend: float
 
     def __init__(self, synthesizer: "Synthesizer", is_percussion_channel: bool) -> None:
-        
         self._synthesizer = synthesizer
         self._is_percussion_channel = is_percussion_channel
 
         self.reset()
-    
-    def reset(self) -> None:
 
+    def reset(self) -> None:
         self._bank_number = 128 if self._is_percussion_channel else 0
         self._patch_number = 0
 
@@ -2366,9 +2576,8 @@ class _Channel:
         self._fine_tune = 8192
 
         self._pitch_bend = 0
-    
-    def reset_all_controllers(self) -> None:
 
+    def reset_all_controllers(self) -> None:
         self._modulation = 0
         self._expression = 127 << 7
         self._hold_pedal = False
@@ -2376,9 +2585,8 @@ class _Channel:
         self._rpn = -1
 
         self._pitch_bend = 0
-    
-    def set_bank(self, value: int) -> None:
 
+    def set_bank(self, value: int) -> None:
         self._bank_number = value
 
         if self._is_percussion_channel:
@@ -2389,47 +2597,45 @@ class _Channel:
 
     def set_modulation_coarse(self, value: int) -> None:
         self._modulation = (self._modulation & 0x7F) | (value << 7)
-    
+
     def set_modulation_fine(self, value: int) -> None:
         self._modulation = (self._modulation & 0xFF80) | value
-    
+
     def set_volume_coarse(self, value: int) -> None:
         self._volume = (self._volume & 0x7F) | (value << 7)
-    
+
     def set_volume_fine(self, value: int) -> None:
         self._volume = (self._volume & 0xFF80) | value
-    
+
     def set_pan_coarse(self, value: int) -> None:
         self._pan = (self._pan & 0x7F) | (value << 7)
-    
+
     def set_pan_fine(self, value: int) -> None:
         self._pan = (self._pan & 0xFF80) | value
-    
+
     def set_expression_coarse(self, value: int) -> None:
         self._expression = (self._expression & 0x7F) | (value << 7)
-    
+
     def set_expression_fine(self, value: int) -> None:
         self._expression = (self._expression & 0xFF80) | value
-    
+
     def set_hold_pedal(self, value: int) -> None:
         self._hold_pedal = value >= 64
-    
+
     def set_reverb_send(self, value: int) -> None:
         self._reverb_send = value
-    
+
     def set_chorus_send(self, value: int) -> None:
         self._chorus_send = value
-    
+
     def set_rpn_coarse(self, value: int) -> None:
         self._rpn = (self._rpn & 0x7F) | (value << 7)
-    
+
     def set_rpn_fine(self, value: int) -> None:
         self._vrpn = (self._rpn & 0xFF80) | value
-    
+
     def data_entry_coarse(self, value: int) -> None:
-
         match self._rpn:
-
             case 0:
                 self._pitch_bend_range = (self._pitch_bend_range & 0x7F) | (value << 7)
 
@@ -2438,14 +2644,12 @@ class _Channel:
 
             case 2:
                 self._coarse_tune = value - 64
-            
+
             case _:
                 pass
-    
+
     def data_entry_fine(self, value: int) -> None:
-
         match self._rpn:
-
             case 0:
                 self._pitch_bend_range = (self._pitch_bend_range & 0xFF80) | value
 
@@ -2457,11 +2661,11 @@ class _Channel:
 
     def set_pitch_bend(self, value1: int, value2: int) -> None:
         self._pitch_bend = (1.0 / 8192.0) * ((value1 | (value2 << 7)) - 8192)
-    
+
     @property
     def is_percussion_channel(self) -> bool:
         return self._is_percussion_channel
-    
+
     @property
     def bank_number(self) -> int:
         return self._bank_number
@@ -2469,31 +2673,31 @@ class _Channel:
     @property
     def patch_number(self) -> int:
         return self._patch_number
-    
+
     @property
     def modulation(self) -> float:
         return (50.0 / 16383.0) * self._modulation
-    
+
     @property
     def volume(self) -> float:
         return (1.0 / 16383.0) * self._volume
-    
+
     @property
     def pan(self) -> float:
         return (100.0 / 16383.0) * self._pan - 50.0
-    
+
     @property
     def expression(self) -> float:
         return (1.0 / 16383.0) * self._expression
-    
+
     @property
     def hold_pedal(self) -> float:
         return self._hold_pedal
-    
+
     @property
     def reverb_send(self) -> float:
         return (1.0 / 127.0) * self._reverb_send
-    
+
     @property
     def chorus_send(self) -> float:
         return (1.0 / 127.0) * self._chorus_send
@@ -2501,27 +2705,23 @@ class _Channel:
     @property
     def pitch_bend_range(self) -> float:
         return (self._pitch_bend_range >> 7) + 0.01 * (self._pitch_bend_range & 0x7F)
-    
+
     @property
     def tune(self) -> float:
         return self._coarse_tune + (1.0 / 8192.0) * (self._fine_tune - 8192)
-    
+
     @property
     def pitch_bend(self) -> float:
         return self.pitch_bend_range * self._pitch_bend
 
 
-
 class _VoiceState(IntEnum):
-
     PLAYING = 0
     RELEASE_REQUESTED = 1
     RELEASED = 2
 
 
-
 class _Voice:
-
     _synthesizer: "Synthesizer"
 
     _volEnv: _VolumeEnvelope
@@ -2583,7 +2783,6 @@ class _Voice:
     _voice_length: int
 
     def __init__(self, synthesizer: "Synthesizer") -> None:
-        
         self._synthesizer = synthesizer
 
         self._vol_env = _VolumeEnvelope(synthesizer)
@@ -2601,21 +2800,23 @@ class _Voice:
         self._current_mix_gain_right = 0
         self._current_reverb_send = 0
         self._current_chorus_send = 0
-    
-    def start(self, region: _RegionPair, channel: int, key: int, velocity: int) -> None:
 
+    def start(self, region: _RegionPair, channel: int, key: int, velocity: int) -> None:
         self._exclusive_class = region.exclusive_class
         self._channel = channel
         self._key = key
         self._velocity = velocity
 
         if velocity > 0:
-
             # According to the Polyphone's implementation, the initial attenuation should be reduced to 40%.
             # I'm not sure why, but this indeed improves the loudness variability.
             sample_attenuation = 0.4 * region.initial_attenuation
             filter_attenuation = 0.5 * region.initial_filter_q
-            decibels = 2 * _SoundFontMath.linear_to_decibels(velocity / 127.0) - sample_attenuation - filter_attenuation
+            decibels = (
+                2 * _SoundFontMath.linear_to_decibels(velocity / 127.0)
+                - sample_attenuation
+                - filter_attenuation
+            )
             self._note_gain = _SoundFontMath.decibels_to_linear(decibels)
 
         else:
@@ -2630,7 +2831,9 @@ class _Voice:
 
         self._mod_lfo_to_cutoff = region.modulation_lfo_to_filter_cutoff_frequency
         self._mod_env_to_cutoff = region.modulation_envelope_to_filter_cutoff_frequency
-        self._dynamic_cutoff = self._mod_lfo_to_cutoff != 0 or self._mod_env_to_cutoff != 0
+        self._dynamic_cutoff = (
+            self._mod_lfo_to_cutoff != 0 or self._mod_env_to_cutoff != 0
+        )
 
         self._mod_lfo_to_volume = region.modulation_lfo_to_volume
         self._dynamic_volume = self._mod_lfo_to_volume > 0.05
@@ -2643,7 +2846,9 @@ class _Voice:
         _RegionEx.start_modulation_envelope(self._mod_env, region, key, velocity)
         _RegionEx.start_vibrato(self._vib_lfo, region, key, velocity)
         _RegionEx.start_modulation(self._mod_lfo, region, key, velocity)
-        _RegionEx.start_oscillator(self._oscillator, self._synthesizer.sound_font.wave_data, region)
+        _RegionEx.start_oscillator(
+            self._oscillator, self._synthesizer.sound_font.wave_data, region
+        )
         self._filter.clear_buffer()
         self._filter.set_low_pass_filter(self._cutoff, self._resonance)
 
@@ -2651,16 +2856,15 @@ class _Voice:
 
         self._voice_state = _VoiceState.PLAYING
         self._voice_length = 0
-    
+
     def end(self) -> None:
         if self._voice_state == _VoiceState.PLAYING:
             self._voice_state = _VoiceState.RELEASE_REQUESTED
-    
+
     def kill(self) -> None:
         self._note_gain = 0
-    
-    def process(self) -> bool:
 
+    def process(self) -> bool:
         if self._note_gain < _SoundFontMath.non_audible():
             return False
 
@@ -2675,16 +2879,23 @@ class _Voice:
         self._vib_lfo.process()
         self._mod_lfo.process()
 
-        vib_pitch_change = (0.01 * channel_info.modulation + self._vib_lfo_to_pitch) * self._vib_lfo.value
-        mod_pitch_change = self._mod_lfo_to_pitch * self._mod_lfo.value + self._mod_env_to_pitch * self._mod_env.value
+        vib_pitch_change = (
+            0.01 * channel_info.modulation + self._vib_lfo_to_pitch
+        ) * self._vib_lfo.value
+        mod_pitch_change = (
+            self._mod_lfo_to_pitch * self._mod_lfo.value
+            + self._mod_env_to_pitch * self._mod_env.value
+        )
         channel_pitch_change = channel_info.tune + channel_info.pitch_bend
         pitch = self._key + vib_pitch_change + mod_pitch_change + channel_pitch_change
         if not self._oscillator.process(self._block, pitch):
             return False
 
         if self._dynamic_cutoff:
-
-            cents = self._mod_lfo_to_cutoff * self._mod_lfo.value + self._mod_env_to_cutoff * self._mod_env.value
+            cents = (
+                self._mod_lfo_to_cutoff * self._mod_lfo.value
+                + self._mod_env_to_cutoff * self._mod_env.value
+            )
             factor = _SoundFontMath.cents_to_multiplying_factor(cents)
             new_cutoff = factor * self._cutoff
 
@@ -2713,7 +2924,6 @@ class _Voice:
 
         mix_gain = self._note_gain * channel_gain * self._vol_env.value
         if self._dynamic_volume:
-
             decibels = self._mod_lfo_to_volume * self._mod_lfo.value
             mix_gain *= _SoundFontMath.decibels_to_linear(decibels)
 
@@ -2728,11 +2938,14 @@ class _Voice:
             self._current_mix_gain_left = mix_gain * math.cos(angle)
             self._current_mix_gain_right = mix_gain * math.sin(angle)
 
-        self._current_reverb_send = _SoundFontMath.clamp(channel_info.reverb_send + self._instrument_reverb, 0, 1)
-        self._current_chorus_send = _SoundFontMath.clamp(channel_info.chorus_send + self._instrument_chorus, 0, 1)
+        self._current_reverb_send = _SoundFontMath.clamp(
+            channel_info.reverb_send + self._instrument_reverb, 0, 1
+        )
+        self._current_chorus_send = _SoundFontMath.clamp(
+            channel_info.chorus_send + self._instrument_chorus, 0, 1
+        )
 
         if self._voice_length == 0:
-
             self._previous_mix_gain_left = self._current_mix_gain_left
             self._previous_mix_gain_right = self._current_mix_gain_right
             self._previous_reverb_send = self._current_reverb_send
@@ -2741,20 +2954,21 @@ class _Voice:
         self._voice_length += self._synthesizer.block_size
 
         return True
-    
-    def release_if_necessary(self, channel_info: _Channel) -> None:
 
+    def release_if_necessary(self, channel_info: _Channel) -> None:
         if self._voice_length < self._synthesizer._minimum_voice_duration:
             return
 
-        if self._voice_state == _VoiceState.RELEASE_REQUESTED and not channel_info.hold_pedal:
-
+        if (
+            self._voice_state == _VoiceState.RELEASE_REQUESTED
+            and not channel_info.hold_pedal
+        ):
             self._vol_env.release()
             self._mod_env.release()
             self._oscillator.release()
 
             self._voice_state = _VoiceState.RELEASED
-    
+
     @property
     def priority(self) -> float:
         if self._note_gain < _SoundFontMath.non_audible():
@@ -2765,63 +2979,61 @@ class _Voice:
     @property
     def block(self) -> Sequence[float]:
         return self._block
-    
+
     @property
     def previous_mix_gain_left(self) -> float:
         return self._previous_mix_gain_left
-    
+
     @property
     def previous_mix_gain_right(self) -> float:
         return self._previous_mix_gain_right
-    
+
     @property
     def current_mix_gain_left(self) -> float:
         return self._current_mix_gain_left
-    
+
     @property
     def current_mix_gain_right(self) -> float:
         return self._current_mix_gain_right
-    
+
     @property
     def previous_reverb_send(self) -> float:
         return self._previous_reverb_send
-    
+
     @property
     def previous_chorus_send(self) -> float:
         return self._previous_chorus_send
-    
+
     @property
     def current_reverb_send(self) -> float:
         return self._current_reverb_send
-    
+
     @property
     def current_chorus_send(self) -> float:
         return self._current_chorus_send
-    
+
     @property
     def exclusive_class(self) -> int:
         return self._exclusive_class
-    
+
     @property
     def channel(self) -> int:
         return self._channel
-    
+
     @property
     def key(self) -> int:
         return self._key
-    
+
     @property
     def velocity(self) -> int:
         return self._velocity
-    
+
     @property
     def voice_length(self) -> int:
         return self._voice_length
 
 
-
 class _VoiceCollection:
-
     _synthesizer: "Synthesizer"
 
     _voices: MutableSequence[_Voice]
@@ -2829,7 +3041,6 @@ class _VoiceCollection:
     _active_voice_count: int
 
     def __init__(self, synthesizer: "Synthesizer", max_active_voice_count: int) -> None:
-        
         self._synthesizer = synthesizer
 
         self._voices = list[_Voice]()
@@ -2837,23 +3048,23 @@ class _VoiceCollection:
             self._voices.append(_Voice(synthesizer))
 
         self._active_voice_count = 0
-    
-    def request_new(self, region: InstrumentRegion, channel: int) -> _Voice:
 
+    def request_new(self, region: InstrumentRegion, channel: int) -> _Voice:
         # If an exclusive class is assigned to the region, find a voice with the same class.
         # If found, reuse it to avoid playing multiple voices with the same class at a time.
         exclusive_class = region.exclusive_class
 
         if exclusive_class != 0:
-
             for i in range(self._active_voice_count):
                 voice = self._voices[i]
-                if voice.exclusive_class == exclusive_class and voice.channel == channel:
+                if (
+                    voice.exclusive_class == exclusive_class
+                    and voice.channel == channel
+                ):
                     return voice
 
         # If the number of active voices is less than the limit, use a free one.
         if self._active_voice_count < len(self._voices):
-
             free = self._voices[self._active_voice_count]
             self._active_voice_count += 1
             return free
@@ -2864,17 +3075,14 @@ class _VoiceCollection:
         lowest_priority = 1000000.0
 
         for i in range(self._active_voice_count):
-
             voice = self._voices[i]
             priority = voice.priority
 
             if priority < lowest_priority:
-
                 lowest_priority = priority
                 candidate = voice
 
             elif priority == lowest_priority:
-
                 # Same priority...
                 # The older one should be more suitable for reuse.
                 if voice.voice_length > candidate.voice_length:
@@ -2883,18 +3091,15 @@ class _VoiceCollection:
         return candidate
 
     def process(self) -> None:
-
         i = 0
 
         while True:
-
             if i == self._active_voice_count:
                 return
 
             if self._voices[i].process():
                 i += 1
             else:
-
                 self._active_voice_count -= 1
 
                 tmp = self._voices[i]
@@ -2903,15 +3108,13 @@ class _VoiceCollection:
 
     def clear(self) -> None:
         self._active_voice_count = 0
-    
+
     @property
     def active_voice_count(self) -> int:
         return self._active_voice_count
 
 
-
 class SynthesizerSettings:
-
     _DEFAULT_BLOCK_SIZE = 64
     _DEFAULT_MAXIMUM_POLYPHONY = 64
     _DEFAULT_ENABLE_REVERB_AND_CHORUS = True
@@ -2922,19 +3125,20 @@ class SynthesizerSettings:
     _enable_reverb_and_chorus: bool
 
     def __init__(self, sample_rate: int) -> None:
-        
         SynthesizerSettings._check_sample_rate(sample_rate)
 
         self._sample_rate = sample_rate
         self._block_size = SynthesizerSettings._DEFAULT_BLOCK_SIZE
         self._maximum_polyphony = SynthesizerSettings._DEFAULT_MAXIMUM_POLYPHONY
-        self._enable_reverb_and_chorus = SynthesizerSettings._DEFAULT_ENABLE_REVERB_AND_CHORUS
-    
+        self._enable_reverb_and_chorus = (
+            SynthesizerSettings._DEFAULT_ENABLE_REVERB_AND_CHORUS
+        )
+
     @staticmethod
     def _check_sample_rate(value: int) -> None:
         if not (16000 <= value and value <= 192000):
             raise Exception("The sample rate must be between 16000 and 192000.")
-    
+
     @staticmethod
     def _check_block_size(value: int) -> None:
         if not (8 <= value and value <= 1024):
@@ -2943,12 +3147,14 @@ class SynthesizerSettings:
     @staticmethod
     def _check_maximum_polyphony(value: int) -> None:
         if not (8 <= value and value <= 256):
-            raise Exception("The maximum number of polyphony must be between 8 and 256.")
-    
+            raise Exception(
+                "The maximum number of polyphony must be between 8 and 256."
+            )
+
     @property
     def sample_rate(self) -> int:
         return self._sample_rate
-    
+
     @sample_rate.setter
     def sample_rate(self, value: int) -> None:
         SynthesizerSettings._check_sample_rate(value)
@@ -2957,33 +3163,31 @@ class SynthesizerSettings:
     @property
     def block_size(self) -> int:
         return self._block_size
-    
+
     @block_size.setter
     def block_size(self, value: int) -> None:
         SynthesizerSettings._check_block_size(value)
         self._block_size = value
-    
+
     @property
     def maximum_polyphony(self) -> int:
         return self._maximum_polyphony
-    
+
     @maximum_polyphony.setter
     def maximum_polyphony(self, value: int) -> None:
         SynthesizerSettings._check_maximum_polyphony(value)
         self._maximum_polyphony = value
-    
+
     @property
     def enable_reverb_and_chorus(self) -> bool:
         return self._enable_reverb_and_chorus
-    
+
     @enable_reverb_and_chorus.setter
     def enable_reverb_and_chorus(self, value: bool) -> None:
         self._enable_reverb_and_chorus = value
 
 
-
 class Synthesizer:
-
     _CHANNEL_COUNT = 16
     _PERCUSSION_CHANNEL = 9
 
@@ -3012,7 +3216,6 @@ class Synthesizer:
     _master_volume: float
 
     def __init__(self, sound_font: SoundFont, settings: SynthesizerSettings) -> None:
-
         self._sound_font = sound_font
         self._sample_rate = settings.sample_rate
         self._block_size = settings.block_size
@@ -3025,7 +3228,6 @@ class Synthesizer:
 
         min_preset_id = 10000000000
         for preset in self._sound_font.presets:
-
             # The preset ID is Int32, where the upper 16 bits represent the bank number
             # and the lower 16 bits represent the patch number.
             # This ID is used to search for presets by the combination of bank number
@@ -3036,7 +3238,6 @@ class Synthesizer:
             # The preset with the minimum ID number will be default.
             # If the SoundFont is GM compatible, the piano will be chosen.
             if preset_id < min_preset_id:
-
                 self._default_preset = preset
                 min_preset_id = preset_id
 
@@ -3054,97 +3255,94 @@ class Synthesizer:
         self._block_read = self._block_size
 
         self._master_volume = 0.5
-    
-    def process_midi_message(self, channel: int, command: int, data1: int, data2: int) -> None:
 
+    def process_midi_message(
+        self, channel: int, command: int, data1: int, data2: int
+    ) -> None:
         if not (0 <= channel and channel < len(self._channels)):
             return
 
         channel_info = self._channels[channel]
 
         match command:
-
-            case 0x80: # Note Off
+            case 0x80:  # Note Off
                 self.note_off(channel, data1)
 
-            case 0x90: # Note On
+            case 0x90:  # Note On
                 self.note_on(channel, data1, data2)
 
-            case 0xB0: # Controller
-
+            case 0xB0:  # Controller
                 match data1:
-
-                    case 0x00: # Bank Selection
+                    case 0x00:  # Bank Selection
                         channel_info.set_bank(data2)
 
-                    case 0x01: # Modulation Coarse
+                    case 0x01:  # Modulation Coarse
                         channel_info.set_modulation_coarse(data2)
 
-                    case 0x21: # Modulation Fine
+                    case 0x21:  # Modulation Fine
                         channel_info.set_modulation_fine(data2)
 
-                    case 0x06: # Data Entry Coarse
+                    case 0x06:  # Data Entry Coarse
                         channel_info.data_entry_coarse(data2)
 
-                    case 0x26: # Data Entry Fine
+                    case 0x26:  # Data Entry Fine
                         channel_info.data_entry_fine(data2)
 
-                    case 0x07: # Channel Volume Coarse
+                    case 0x07:  # Channel Volume Coarse
                         channel_info.set_volume_coarse(data2)
 
-                    case 0x27: # Channel Volume Fine
+                    case 0x27:  # Channel Volume Fine
                         channel_info.set_volume_fine(data2)
 
-                    case 0x0A: # Pan Coarse
+                    case 0x0A:  # Pan Coarse
                         channel_info.set_pan_coarse(data2)
 
-                    case 0x2A: # Pan Fine
+                    case 0x2A:  # Pan Fine
                         channel_info.set_pan_fine(data2)
 
-                    case 0x0B: # Expression Coarse
+                    case 0x0B:  # Expression Coarse
                         channel_info.set_expression_coarse(data2)
 
-                    case 0x2B: # Expression Fine
+                    case 0x2B:  # Expression Fine
                         channel_info.set_expression_fine(data2)
 
-                    case 0x40: # Hold Pedal
+                    case 0x40:  # Hold Pedal
                         channel_info.set_hold_pedal(data2)
 
-                    case 0x5B: # Reverb Send
+                    case 0x5B:  # Reverb Send
                         channel_info.set_reverb_send(data2)
 
-                    case 0x5D: #Chorus Send
+                    case 0x5D:  # Chorus Send
                         channel_info.set_chorus_send(data2)
 
-                    case 0x65: # RPN Coarse
+                    case 0x65:  # RPN Coarse
                         channel_info.set_rpn_coarse(data2)
 
-                    case 0x64: # RPN Fine
+                    case 0x64:  # RPN Fine
                         channel_info.set_rpn_fine(data2)
 
-                    case 0x78: # All Sound Off
+                    case 0x78:  # All Sound Off
                         self.note_off_all_channel(channel, True)
 
-                    case 0x79: # Reset All Controllers
+                    case 0x79:  # Reset All Controllers
                         self.reset_all_controllers_channel(channel)
 
-                    case 0x7B: # All Note Off
+                    case 0x7B:  # All Note Off
                         self.note_off_all_channel(channel, False)
-                    
+
                     case _:
                         pass
 
-            case 0xC0: # Program Change
+            case 0xC0:  # Program Change
                 channel_info.set_patch(data1)
 
-            case 0xE0: # Pitch Bend
+            case 0xE0:  # Pitch Bend
                 channel_info.set_pitch_bend(data1, data2)
 
             case _:
                 pass
 
     def note_off(self, channel: int, key: int) -> None:
-
         if not (0 <= channel and channel < len(self._channels)):
             return
 
@@ -3152,16 +3350,15 @@ class Synthesizer:
             voice = self._voices._voices[i]
             if voice.channel == channel and voice.key == key:
                 voice.end()
-    
-    def note_on(self, channel: int, key: int, velocity: int) -> None:
 
+    def note_on(self, channel: int, key: int, velocity: int) -> None:
         if velocity == 0:
             self.note_off(channel, key)
             return
-        
+
         if not (0 <= channel and channel < len(self._channels)):
             return
-        
+
         channel_info = self._channels[channel]
 
         preset_id = (channel_info.bank_number << 16) | channel_info.patch_number
@@ -3169,17 +3366,19 @@ class Synthesizer:
         preset = self._sound_font.presets[0]
 
         if not (preset_id in self._preset_lookup):
-
             # Try fallback to the GM sound set.
             # Normally, the given patch number + the bank number 0 will work.
             # For drums (bank number >= 128), it seems to be better to select the standard set (128:0).
-            gm_preset_id = channel_info.patch_number if channel_info.bank_number < 128 else (128 << 16)
+            gm_preset_id = (
+                channel_info.patch_number
+                if channel_info.bank_number < 128
+                else (128 << 16)
+            )
 
             if not (gm_preset_id in self._preset_lookup):
-
                 # No corresponding preset was found. Use the default one...
                 preset = self._default_preset
-        
+
         else:
             preset = self._preset_lookup[preset_id]
 
@@ -3187,21 +3386,18 @@ class Synthesizer:
             if preset_region.contains(key, velocity):
                 for instrument_region in preset_region.instrument.regions:
                     if instrument_region.contains(key, velocity):
-
                         region_pair = _RegionPair(preset_region, instrument_region)
                         voice = self._voices.request_new(instrument_region, channel)
                         voice.start(region_pair, channel, key, velocity)
 
     def note_off_all(self, immediate: bool) -> None:
-
         if immediate:
             self._voices.clear()
         else:
             for i in range(self._voices.active_voice_count):
                 self._voices._voices[i].end()
-    
-    def note_off_all_channel(self, channel: int, immediate: bool) -> None:
 
+    def note_off_all_channel(self, channel: int, immediate: bool) -> None:
         if immediate:
             for i in range(self._voices.active_voice_count):
                 if self._voices._voices[i].channel == channel:
@@ -3210,33 +3406,37 @@ class Synthesizer:
             for i in range(self._voices.active_voice_count):
                 if self._voices._voices[i].channel == channel:
                     self._voices._voices[i].end()
-    
-    def reset_all_controllers(self) -> None:
 
+    def reset_all_controllers(self) -> None:
         for channel in self._channels:
             channel.reset_all_controllers()
-    
-    def reset_all_controllers_channel(self, channel: int) -> None:
 
+    def reset_all_controllers_channel(self, channel: int) -> None:
         if not (0 <= channel and channel < len(self._channels)):
             return
-        
-        self._channels[channel].reset_all_controllers()
-    
-    def reset(self):
 
+        self._channels[channel].reset_all_controllers()
+
+    def reset(self):
         self._voices.clear()
 
         for channel in self._channels:
             channel.reset()
-        
-        self._block_read = self._block_size
-    
-    def render(self, left: MutableSequence[float], right: MutableSequence[float], offset: Optional[int] = None, count: Optional[int] = None) -> None:
 
+        self._block_read = self._block_size
+
+    def render(
+        self,
+        left: MutableSequence[float],
+        right: MutableSequence[float],
+        offset: Optional[int] = None,
+        count: Optional[int] = None,
+    ) -> None:
         if len(left) != len(right):
-            raise Exception("The output buffers for the left and right must be the same length.")
-        
+            raise Exception(
+                "The output buffers for the left and right must be the same length."
+            )
+
         if offset is None:
             offset = 0
         elif count is None:
@@ -3248,9 +3448,7 @@ class Synthesizer:
         wrote = 0
 
         while wrote < count:
-
             if self._block_read == self._block_size:
-
                 self._render_block()
                 self._block_read = 0
 
@@ -3259,39 +3457,44 @@ class Synthesizer:
             rem = min(src_rem, dst_rem)
 
             for t in range(rem):
-
                 left[offset + wrote + t] = self._block_left[self._block_read + t]
                 right[offset + wrote + t] = self._block_right[self._block_read + t]
 
             self._block_read += rem
             wrote += rem
-    
-    def _render_block(self) -> None:
 
+    def _render_block(self) -> None:
         self._voices.process()
 
         for t in range(self._block_size):
-
             self._block_left[t] = 0
             self._block_right[t] = 0
-        
-        for i in range(self._voices.active_voice_count):
 
+        for i in range(self._voices.active_voice_count):
             voice = self._voices._voices[i]
 
             previous_gain_left = self._master_volume * voice.previous_mix_gain_left
             current_gain_left = self._master_volume * voice.current_mix_gain_left
-            self._write_block(previous_gain_left, current_gain_left, voice.block, self._block_left)
+            self._write_block(
+                previous_gain_left, current_gain_left, voice.block, self._block_left
+            )
             previous_gain_right = self._master_volume * voice.previous_mix_gain_right
             current_gain_right = self._master_volume * voice.current_mix_gain_right
-            self._write_block(previous_gain_right, current_gain_right, voice.block, self._block_right)
-    
-    def _write_block(self, previous_gain: float, current_gain: float, source: Sequence[float], destination: MutableSequence[float]) -> None:
+            self._write_block(
+                previous_gain_right, current_gain_right, voice.block, self._block_right
+            )
 
+    def _write_block(
+        self,
+        previous_gain: float,
+        current_gain: float,
+        source: Sequence[float],
+        destination: MutableSequence[float],
+    ) -> None:
         if max(previous_gain, current_gain) < _SoundFontMath.non_audible():
             return
 
-        if abs(current_gain - previous_gain) < 1.0E-3:
+        if abs(current_gain - previous_gain) < 1.0e-3:
             _ArrayMath.multiply_add(current_gain, source, destination)
 
         else:
@@ -3305,82 +3508,73 @@ class Synthesizer:
     @property
     def maximum_polyphony(self) -> int:
         return self._maximum_polyphony
-    
+
     @property
     def channel_count(self) -> int:
         return Synthesizer._CHANNEL_COUNT
-    
+
     @property
     def percussion_channel(self) -> int:
         return Synthesizer._PERCUSSION_CHANNEL
-    
+
     @property
     def sound_font(self) -> SoundFont:
         return self._sound_font
-    
+
     @property
     def sample_rate(self) -> int:
         return self._sample_rate
-    
+
     @property
     def active_voice_count(self) -> int:
         return self._voices.active_voice_count
-    
+
     @property
     def master_volume(self) -> float:
         return self._master_volume
-    
+
     @master_volume.setter
     def master_volume(self, value: float) -> None:
         self._master_volume = value
-
 
 
 def create_buffer(length: int) -> MutableSequence[float]:
     return array("d", itertools.repeat(0, length))
 
 
-
 class _MidiMessageType(IntEnum):
-
     NORMAL = 0
     TEMPO_CHANGE = 252
     END_OF_TRACK = 255
 
 
-
 class _MidiMessage:
-
     _data: bytearray
 
     def __init__(self, channel: int, command: int, data1: int, data2: int) -> None:
-        
         self._data = bytearray()
         self._data.append(channel & 0xFF)
         self._data.append(command & 0xFF)
         self._data.append(data1 & 0xFF)
         self._data.append(data2 & 0xFF)
-    
+
     @staticmethod
     def common1(status: int, data1: int) -> "_MidiMessage":
-
         channel = status & 0x0F
         command = status & 0xF0
         data2 = 0
 
         return _MidiMessage(channel, command, data1, data2)
-    
+
     @staticmethod
     def common2(status: int, data1: int, data2: int) -> "_MidiMessage":
-
         channel = status & 0x0F
         command = status & 0xF0
 
         return _MidiMessage(channel, command, data1, data2)
-    
+
     @staticmethod
     def tempo_change(tempo: int) -> "_MidiMessage":
-
         command = tempo >> 16
         data1 = tempo >> 8
         data2 = tempo
@@ -3393,9 +3587,7 @@ class _MidiMessage:
 
     @property
     def type(self) -> _MidiMessageType:
-
         match self.channel:
-
             case int(_MidiMessageType.TEMPO_CHANGE):
                 return _MidiMessageType.TEMPO_CHANGE
 
@@ -3408,27 +3600,25 @@ class _MidiMessage:
     @property
     def channel(self) -> int:
         return self._data[0]
-    
+
     @property
     def command(self) -> int:
         return self._data[1]
-    
+
     @property
     def data1(self) -> int:
         return self._data[2]
-    
+
     @property
     def data2(self) -> int:
         return self._data[3]
-    
+
     @property
     def tempo(self) -> float:
         return 60000000.0 / ((self.command << 16) | (self.data1 << 8) | self.data2)
 
 
-
 class MidiFile:
-
     _track_count: int
     _resolution: int
 
@@ -3436,10 +3626,11 @@ class MidiFile:
     _times: Sequence[float]
 
     def __init__(self, reader: BufferedReader) -> None:
-        
         chunk_type = _BinaryReaderEx.read_four_cc(reader)
         if chunk_type != "MThd":
-            raise Exception("The chunk type must be 'MThd', but was '" + chunk_type + "'.")
+            raise Exception(
+                "The chunk type must be 'MThd', but was '" + chunk_type + "'."
+            )
 
         size = _BinaryReaderEx.read_int32_big_endian(reader)
         if size != 6:
@@ -3456,22 +3647,24 @@ class MidiFile:
         tick_lists = list[list[int]]()
 
         for _ in range(self._track_count):
-
             message_list, tick_list = MidiFile._read_track(reader)
             message_lists.append(message_list)
             tick_lists.append(tick_list)
 
-        messages, times = MidiFile._merge_tracks(message_lists, tick_lists, self._resolution)
+        messages, times = MidiFile._merge_tracks(
+            message_lists, tick_lists, self._resolution
+        )
 
         self._messages = messages
         self._times = times
 
     @staticmethod
     def _read_track(reader: BufferedReader) -> tuple[list[_MidiMessage], list[int]]:
-
         chunk_type = _BinaryReaderEx.read_four_cc(reader)
         if chunk_type != "MTrk":
-            raise Exception("The chunk type must be 'MTrk', but was '" + chunk_type + "'.")
+            raise Exception(
+                "The chunk type must be 'MTrk', but was '" + chunk_type + "'."
+            )
 
         _BinaryReaderEx.read_int32_big_endian(reader)
 
@@ -3482,14 +3675,12 @@ class MidiFile:
         last_status = 0
 
         while True:
-
             delta = _BinaryReaderEx.read_int_variable_length(reader)
             first = _BinaryReaderEx.read_uint8(reader)
 
             tick += delta
 
             if (first & 128) == 0:
-
                 command = last_status & 0xF0
                 if command == 0xC0 or command == 0xD0:
                     messages.append(_MidiMessage.common1(last_status, first))
@@ -3502,22 +3693,23 @@ class MidiFile:
                 continue
 
             match first:
-
-                case 0xF0: # System Exclusive
+                case 0xF0:  # System Exclusive
                     MidiFile.discard_data(reader)
 
-                case 0xF7: # System Exclusive
+                case 0xF7:  # System Exclusive
                     MidiFile.discard_data(reader)
 
-                case 0xFF: # Meta Event
+                case 0xFF:  # Meta Event
                     match _BinaryReaderEx.read_uint8(reader):
-                        case 0x2F: # End of Track
+                        case 0x2F:  # End of Track
                             _BinaryReaderEx.read_uint8(reader)
                             messages.append(_MidiMessage.end_of_track())
                             ticks.append(tick)
                             return messages, ticks
-                        case 0x51: # Tempo
-                            messages.append(_MidiMessage.tempo_change(MidiFile.read_tempo(reader)))
+                        case 0x51:  # Tempo
+                            messages.append(
+                                _MidiMessage.tempo_change(MidiFile.read_tempo(reader))
+                            )
                             ticks.append(tick)
                         case _:
                             MidiFile.discard_data(reader)
@@ -3535,10 +3727,13 @@ class MidiFile:
                         ticks.append(tick)
 
             last_status = first
-    
-    @staticmethod
-    def _merge_tracks(message_lists: list[list[_MidiMessage]], tick_lists: list[list[int]], resolution: int) -> tuple[list[_MidiMessage], list[float]]:
 
+    @staticmethod
+    def _merge_tracks(
+        message_lists: list[list[_MidiMessage]],
+        tick_lists: list[list[int]],
+        resolution: int,
+    ) -> tuple[list[_MidiMessage], list[float]]:
         merged_messages = list[_MidiMessage]()
         merged_times = list[float]()
 
@@ -3550,7 +3745,6 @@ class MidiFile:
         tempo: float = 120.0
 
         while True:
-
             min_tick = 10000000000
             min_index = -1
 
@@ -3584,7 +3778,6 @@ class MidiFile:
 
     @staticmethod
     def read_tempo(reader: BufferedReader) -> int:
-
         size = _BinaryReaderEx.read_int_variable_length(reader)
         if size != 3:
             raise Exception("Failed to read the tempo value.")
@@ -3594,21 +3787,18 @@ class MidiFile:
         b3 = _BinaryReaderEx.read_uint8(reader)
 
         return (b1 << 16) | (b2 << 8) | b3
-    
+
     @staticmethod
     def discard_data(reader: BufferedReader) -> None:
-
         size = _BinaryReaderEx.read_int_variable_length(reader)
         reader.seek(size, io.SEEK_CUR)
-    
+
     @property
     def length(self) -> float:
         return self._times[-1]
 
 
-
 class MidiFileSequencer:
-
     _synthesizer: Synthesizer
 
     _midi_file: Optional[MidiFile]
@@ -3624,9 +3814,8 @@ class MidiFileSequencer:
 
     def __init__(self, synthesizer: Synthesizer) -> None:
         self._synthesizer = synthesizer
-    
-    def play(self, midi_file: MidiFile, loop: bool) -> None:
 
+    def play(self, midi_file: MidiFile, loop: bool) -> None:
         self._midi_file = midi_file
         self._loop = loop
 
@@ -3636,21 +3825,29 @@ class MidiFileSequencer:
         self._msg_index = 0
 
         self._block_left = array("d", itertools.repeat(0, self._synthesizer.block_size))
-        self._block_right = array("d", itertools.repeat(0, self._synthesizer.block_size))
+        self._block_right = array(
+            "d", itertools.repeat(0, self._synthesizer.block_size)
+        )
 
         self._synthesizer.reset()
-    
-    def stop(self) -> None:
 
+    def stop(self) -> None:
         self._midi_file = None
 
         self._synthesizer.reset()
-    
-    def render(self, left: MutableSequence[float], right: MutableSequence[float], offset: Optional[int] = None, count: Optional[int] = None) -> None:
 
+    def render(
+        self,
+        left: MutableSequence[float],
+        right: MutableSequence[float],
+        offset: Optional[int] = None,
+        count: Optional[int] = None,
+    ) -> None:
         if len(left) != len(right):
-            raise Exception("The output buffers for the left and right must be the same length.")
-        
+            raise Exception(
+                "The output buffers for the left and right must be the same length."
+            )
+
         if offset is None:
             offset = 0
         elif count is None:
@@ -3658,16 +3855,16 @@ class MidiFileSequencer:
 
         if count is None:
             count = len(left)
-        
+
         wrote = 0
 
         while wrote < count:
-
             if self._block_wrote == self._synthesizer.block_size:
-
                 self._process_events()
                 self._block_wrote = 0
-                self._current_time += self._synthesizer.block_size / self._synthesizer.sample_rate
+                self._current_time += (
+                    self._synthesizer.block_size / self._synthesizer.sample_rate
+                )
 
             src_rem = self._synthesizer.block_size - self._block_wrote
             dst_rem = count - wrote
@@ -3679,27 +3876,25 @@ class MidiFileSequencer:
             wrote += rem
 
     def _process_events(self) -> None:
-
         if self._midi_file is None:
             return
 
         while self._msg_index < len(self._midi_file._messages):
-
             time = self._midi_file._times[self._msg_index]
             msg = self._midi_file._messages[self._msg_index]
 
             if time <= self._current_time:
-
                 if msg.type == _MidiMessageType.NORMAL:
-                    self._synthesizer.process_midi_message(msg.channel, msg.command, msg.data1, msg.data2)
-                
+                    self._synthesizer.process_midi_message(
+                        msg.channel, msg.command, msg.data1, msg.data2
+                    )
+
                 self._msg_index += 1
 
             else:
                 break
 
         if self._msg_index == len(self._midi_file._messages) and self._loop:
-
             self._current_time = 0.0
             self._msg_index = 0
             self._synthesizer.note_off_all(False)
