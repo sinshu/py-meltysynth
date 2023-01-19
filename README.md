@@ -1,6 +1,15 @@
 # Py-MeltySynth
 
 Py-MeltySynth is a SoundFont MIDI synthesizer written in pure Python, ported from [MeltySynth for C#](https://github.com/sinshu/meltysynth).
+I believe this is the first fully functional SoundFont synthesizer made with Python without external libraries.
+
+
+
+## Features
+
+* Support for standard MIDI files.
+* No dependencies other than the standard library.
+* All the functionality is in a single file. Simply copy [the file](meltysynth.py) into your project and you are ready to go.
 
 
 
