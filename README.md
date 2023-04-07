@@ -23,11 +23,14 @@ https://www.youtube.com/watch?v=Pheb0pSzQP8
 
 ## Development status
 
-It works, but it's slow. Without external libraries, sample-by-sample audio processing seems tough for Python... But Python is said to be becoming more performance oriented, so it should be useful in the future.
+It works, but it's slow. Without external libraries, sample-by-sample audio processing seems tough for Python...
+But Python is said to be becoming more performance oriented, so it should be useful in the future.
 
-Below is a comparison of the time it took to render a MIDI file in several languages. The MIDI file is [flourish.mid](https://midis.fandom.com/wiki/Flourish) (90 seconds) and the SoundFont used is [TimGM6mb.sf2](https://musescore.org/en/handbook/3/soundfonts-and-sfz-files#gm_soundfonts). The version of Python is 3.11 (RC).
+Below is a comparison of the time it took to render a MIDI file in several languages.
+The MIDI file is [flourish.mid](https://midis.fandom.com/wiki/Flourish) (90 seconds) and the SoundFont used is [TimGM6mb.sf2](https://musescore.org/en/handbook/3/soundfonts-and-sfz-files#gm_soundfonts).
+Python is still slow, but it is certainly improving in speed as the versions go up.
 
-![Python is 100 times slower than C# ;)](media/20221004_rendering_time.png)
+![The bar graph compares the processing speeds of several programming languages. Python is notably slower, taking dozens of times longer than the other languages in comparison.](media/20230408_rendering_time.png)
 
 
 
