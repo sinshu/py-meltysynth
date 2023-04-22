@@ -7,25 +7,23 @@ from collections.abc import Sequence
 import meltysynth as ms
 
 
-
-def write_wav_file(sample_rate: int, left: Sequence[float], right: Sequence[float], path: str) -> None:
-
+def write_wav_file(
+    sample_rate: int, left: Sequence[float], right: Sequence[float], path: str
+) -> None:
     max_value = 0.0
 
     for t in range(len(left)):
-
         if abs(left[t]) > max_value:
             max_value = abs(left[t])
-        
+
         if abs(right[t]) > max_value:
             max_value = abs(right[t])
-    
+
     a = 0.99 / max_value
 
     data = array("h")
 
     for t in range(len(left)):
-
         sample_left = int(32768 * a * left[t])
         sample_right = int(32768 * a * right[t])
 
@@ -40,9 +38,7 @@ def write_wav_file(sample_rate: int, left: Sequence[float], right: Sequence[floa
     wav.close()
 
 
-
 def simple_chord() -> None:
-
     # Load the SoundFont.
     sf2 = open("TimGM6mb.sf2", "rb")
     sound_font = ms.SoundFont(sf2)
@@ -73,9 +69,7 @@ def simple_chord() -> None:
     write_wav_file(settings.sample_rate, left, right, "simple_chord.wav")
 
 
-
 def flourish() -> None:
-
     # Load the SoundFont.
     sf2 = open("TimGM6mb.sf2", "rb")
     sound_font = ms.SoundFont(sf2)
@@ -110,10 +104,8 @@ def flourish() -> None:
     write_wav_file(settings.sample_rate, left, right, "flourish.wav")
 
 
-
 def main() -> None:
     simple_chord()
-
 
 
 if __name__ == "__main__":

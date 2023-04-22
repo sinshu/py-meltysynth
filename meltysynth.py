@@ -338,14 +338,17 @@ class _SoundFontSampleData:
                 + "'."
             )
 
+        bits_per_sample: int = 0
+        samples: Optional[Sequence[float]] = None
+
         while reader.tell() < end:
             id = _BinaryReaderEx.read_four_cc(reader)
             size = _BinaryReaderEx.read_uint32(reader)
 
             match id:
                 case "smpl":
-                    self._bits_per_sample = 16
-                    self._samples = _BinaryReaderEx.read_int16_array_as_float_array(
+                    bits_per_sample = 16
+                    samples = _BinaryReaderEx.read_int16_array_as_float_array(
                         reader, size
                     )
 
@@ -357,8 +360,11 @@ class _SoundFontSampleData:
                         "The INFO list contains an unknown ID '" + id + "'."
                     )
 
-        if self._samples is None:
+        if samples is None:
             raise Exception("No valid sample data was found.")
+
+        self._bits_per_sample = bits_per_sample
+        self._samples = samples
 
     @property
     def bits_per_sample(self) -> int:
@@ -771,7 +777,7 @@ class Instrument:
 
         zone_span = zones[info.zone_start_index : info.zone_start_index + zone_count]
 
-        self._regions = InstrumentRegion._create(self, zone_span, samples)
+        self._regions = InstrumentRegion._create(self, zone_span, samples)  # type: ignore
 
     @staticmethod
     def _create(
@@ -1184,7 +1190,7 @@ class Preset:
 
         zone_span = zones[info.zone_start_index : info.zone_start_index + zone_count]
 
-        self._regions = PresetRegion._create(self, zone_span, instruments)
+        self._regions = PresetRegion._create(self, zone_span, instruments)  # type: ignore
 
     @staticmethod
     def _create(
@@ -1560,7 +1566,7 @@ class _SoundFontParameters:
                     instrument_generators = _Generator.read_from_chunk(reader, size)
 
                 case "shdr":
-                    sample_headers = SampleHeader._read_from_chunk(reader, size)
+                    sample_headers = SampleHeader._read_from_chunk(reader, size)  # type: ignore
 
                 case _:
                     raise Exception(
@@ -1591,12 +1597,12 @@ class _SoundFontParameters:
         self._sample_headers = sample_headers
 
         instrument_zones = _Zone.create(instrument_bag, instrument_generators)
-        self._instruments = Instrument._create(
+        self._instruments = Instrument._create(  # type: ignore
             instrument_infos, instrument_zones, sample_headers
         )
 
         preset_zones = _Zone.create(preset_bag, preset_generators)
-        self._presets = Preset._create(preset_infos, preset_zones, self._instruments)
+        self._presets = Preset._create(preset_infos, preset_zones, self._instruments)  # type: ignore
 
     @property
     def sample_headers(self) -> Sequence[SampleHeader]:
@@ -1675,7 +1681,7 @@ class _RegionPair:
         self._instrument = instrument
 
     def get_value(self, generator_type: _GeneratorType) -> int:
-        return self._preset._gs[generator_type] + self._instrument._gs[generator_type]
+        return self._preset._gs[generator_type] + self._instrument._gs[generator_type]  # type: ignore
 
     @property
     def preset(self) -> PresetRegion:
@@ -2156,9 +2162,6 @@ class _VolumeEnvelope:
                 self._priority = self._value
                 return self._value > _SoundFontMath.non_audible()
 
-            case _:
-                raise Exception("Invalid envelope stage.")
-
     @property
     def value(self) -> float:
         return self._value
@@ -2286,9 +2289,6 @@ class _ModulationEnvelope:
                     0,
                 )
                 return self._value > _SoundFontMath.non_audible()
-
-            case _:
-                raise Exception("Invalid envelope stage.")
 
     @property
     def value(self) -> float:
@@ -2868,7 +2868,7 @@ class _Voice:
         if self._note_gain < _SoundFontMath.non_audible():
             return False
 
-        channel_info = self._synthesizer._channels[self._channel]
+        channel_info = self._synthesizer._channels[self._channel]  # type: ignore
 
         self.release_if_necessary(channel_info)
 
@@ -2956,7 +2956,7 @@ class _Voice:
         return True
 
     def release_if_necessary(self, channel_info: _Channel) -> None:
-        if self._voice_length < self._synthesizer._minimum_voice_duration:
+        if self._voice_length < self._synthesizer._minimum_voice_duration:  # type: ignore
             return
 
         if (
@@ -3347,7 +3347,7 @@ class Synthesizer:
             return
 
         for i in range(self._voices.active_voice_count):
-            voice = self._voices._voices[i]
+            voice = self._voices._voices[i]  # type: ignore
             if voice.channel == channel and voice.key == key:
                 voice.end()
 
@@ -3395,17 +3395,17 @@ class Synthesizer:
             self._voices.clear()
         else:
             for i in range(self._voices.active_voice_count):
-                self._voices._voices[i].end()
+                self._voices._voices[i].end()  # type: ignore
 
     def note_off_all_channel(self, channel: int, immediate: bool) -> None:
         if immediate:
             for i in range(self._voices.active_voice_count):
-                if self._voices._voices[i].channel == channel:
-                    self._voices._voices[i].kill()
+                if self._voices._voices[i].channel == channel:  # type: ignore
+                    self._voices._voices[i].kill()  # type: ignore
         else:
             for i in range(self._voices.active_voice_count):
-                if self._voices._voices[i].channel == channel:
-                    self._voices._voices[i].end()
+                if self._voices._voices[i].channel == channel:  # type: ignore
+                    self._voices._voices[i].end()  # type: ignore
 
     def reset_all_controllers(self) -> None:
         for channel in self._channels:
@@ -3471,7 +3471,7 @@ class Synthesizer:
             self._block_right[t] = 0
 
         for i in range(self._voices.active_voice_count):
-            voice = self._voices._voices[i]
+            voice = self._voices._voices[i]  # type: ignore
 
             previous_gain_left = self._master_volume * voice.previous_mix_gain_left
             current_gain_left = self._master_volume * voice.current_mix_gain_left
@@ -3879,9 +3879,9 @@ class MidiFileSequencer:
         if self._midi_file is None:
             return
 
-        while self._msg_index < len(self._midi_file._messages):
-            time = self._midi_file._times[self._msg_index]
-            msg = self._midi_file._messages[self._msg_index]
+        while self._msg_index < len(self._midi_file._messages): # type: ignore
+            time = self._midi_file._times[self._msg_index] # type: ignore
+            msg = self._midi_file._messages[self._msg_index] # type: ignore
 
             if time <= self._current_time:
                 if msg.type == _MidiMessageType.NORMAL:
@@ -3894,7 +3894,7 @@ class MidiFileSequencer:
             else:
                 break
 
-        if self._msg_index == len(self._midi_file._messages) and self._loop:
+        if self._msg_index == len(self._midi_file._messages) and self._loop: # type: ignore
             self._current_time = 0.0
             self._msg_index = 0
             self._synthesizer.note_off_all(False)
