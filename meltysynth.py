@@ -3367,8 +3367,9 @@ class Synthesizer:
         preset_id = (channel_info.bank_number << 16) | channel_info.patch_number
 
         preset = self._sound_font.presets[0]
-
-        if not (preset_id in self._preset_lookup):
+        if preset_id in self._preset_lookup:
+            preset = self._preset_lookup[preset_id]
+        else:
             # Try fallback to the GM sound set.
             # Normally, the given patch number + the bank number 0 will work.
             # For drums (bank number >= 128), it seems to be better to select the standard set (128:0).
@@ -3377,13 +3378,11 @@ class Synthesizer:
                 if channel_info.bank_number < 128
                 else (128 << 16)
             )
-
-            if not (gm_preset_id in self._preset_lookup):
+            if gm_preset_id in self._preset_lookup:
+                preset = self._preset_lookup[gm_preset_id]
+            else:
                 # No corresponding preset was found. Use the default one...
                 preset = self._default_preset
-
-        else:
-            preset = self._preset_lookup[preset_id]
 
         for preset_region in preset.regions:
             if preset_region.contains(key, velocity):
