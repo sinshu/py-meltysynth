@@ -199,7 +199,8 @@ class SoundFontInfo:
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
 
-        end = reader.tell() + _BinaryReaderEx.read_uint32(reader)
+        end = _BinaryReaderEx.read_uint32(reader)
+        end += reader.tell()
 
         list_type = _BinaryReaderEx.read_four_cc(reader)
         if list_type != "INFO":
@@ -328,7 +329,8 @@ class _SoundFontSampleData:
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
 
-        end = reader.tell() + _BinaryReaderEx.read_uint32(reader)
+        end = _BinaryReaderEx.read_uint32(reader)
+        end += reader.tell()
 
         list_type = _BinaryReaderEx.read_four_cc(reader)
         if list_type != "sdta":
@@ -1518,7 +1520,8 @@ class _SoundFontParameters:
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
 
-        end = reader.tell() + _BinaryReaderEx.read_int32(reader)
+        end = _BinaryReaderEx.read_int32(reader)
+        end += reader.tell()
 
         list_type = _BinaryReaderEx.read_four_cc(reader)
         if list_type != "pdta":
@@ -3666,7 +3669,8 @@ class MidiFile:
                 "The chunk type must be 'MTrk', but was '" + chunk_type + "'."
             )
 
-        _BinaryReaderEx.read_int32_big_endian(reader)
+        end = _BinaryReaderEx.read_int32_big_endian(reader)
+        end += reader.tell()
 
         messages = list[_MidiMessage]()
         ticks = list[int]()
@@ -3705,6 +3709,12 @@ class MidiFile:
                             _BinaryReaderEx.read_uint8(reader)
                             messages.append(_MidiMessage.end_of_track())
                             ticks.append(tick)
+
+                            # Some MIDI files may have events inserted after the EOT.
+                            # Such events should be ignored.
+                            if reader.tell() < end:
+                                reader.seek(end, io.SEEK_SET)
+
                             return messages, ticks
                         case 0x51:  # Tempo
                             messages.append(
@@ -3879,9 +3889,9 @@ class MidiFileSequencer:
         if self._midi_file is None:
             return
 
-        while self._msg_index < len(self._midi_file._messages): # type: ignore
-            time = self._midi_file._times[self._msg_index] # type: ignore
-            msg = self._midi_file._messages[self._msg_index] # type: ignore
+        while self._msg_index < len(self._midi_file._messages):  # type: ignore
+            time = self._midi_file._times[self._msg_index]  # type: ignore
+            msg = self._midi_file._messages[self._msg_index]  # type: ignore
 
             if time <= self._current_time:
                 if msg.type == _MidiMessageType.NORMAL:
@@ -3894,7 +3904,7 @@ class MidiFileSequencer:
             else:
                 break
 
-        if self._msg_index == len(self._midi_file._messages) and self._loop: # type: ignore
+        if self._msg_index == len(self._midi_file._messages) and self._loop:  # type: ignore
             self._current_time = 0.0
             self._msg_index = 0
             self._synthesizer.note_off_all(False)
