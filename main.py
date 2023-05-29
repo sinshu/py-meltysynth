@@ -40,9 +40,7 @@ def write_wav_file(
 
 def simple_chord() -> None:
     # Load the SoundFont.
-    sf2 = open("TimGM6mb.sf2", "rb")
-    sound_font = ms.SoundFont(sf2)
-    sf2.close()
+    sound_font = ms.SoundFont.from_file("TimGM6mb.sf2")
 
     # Create the synthesizer.
     settings = ms.SynthesizerSettings(44100)
@@ -71,18 +69,14 @@ def simple_chord() -> None:
 
 def flourish() -> None:
     # Load the SoundFont.
-    sf2 = open("TimGM6mb.sf2", "rb")
-    sound_font = ms.SoundFont(sf2)
-    sf2.close()
+    sound_font = ms.SoundFont.from_file("TimGM6mb.sf2")
 
     # Create the synthesizer.
     settings = ms.SynthesizerSettings(44100)
     synthesizer = ms.Synthesizer(sound_font, settings)
 
     # Load the MIDI file.
-    mid = open("flourish.mid", "rb")
-    midi_file = ms.MidiFile(mid)
-    mid.close()
+    midi_file = ms.MidiFile.from_file("flourish.mid")
 
     # Create the MIDI sequencer.
     sequencer = ms.MidiFileSequencer(synthesizer)

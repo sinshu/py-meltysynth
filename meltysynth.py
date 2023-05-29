@@ -1654,6 +1654,11 @@ class SoundFont:
         self._presets = parameters.presets
         self._instruments = parameters.instruments
 
+    @classmethod
+    def from_file(cls, file_path: str) -> "SoundFont":
+        with open(file_path, "rb") as f:
+            return cls(f)
+
     @property
     def info(self) -> SoundFontInfo:
         return self._info
@@ -3659,6 +3664,11 @@ class MidiFile:
 
         self._messages = messages
         self._times = times
+
+    @classmethod
+    def from_file(cls, file_path: str) -> "MidiFile":
+        with open(file_path, "rb") as f:
+            return cls(f)
 
     @staticmethod
     def _read_track(reader: BufferedIOBase) -> tuple[list[_MidiMessage], list[int]]:
