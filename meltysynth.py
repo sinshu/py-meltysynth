@@ -5,45 +5,45 @@ import math
 from array import array
 from collections.abc import MutableSequence, Sequence
 from enum import IntEnum
-from io import BufferedReader
+from io import BufferedIOBase
 from typing import Optional
 
 
 class _BinaryReaderEx:
     @staticmethod
-    def read_int32(reader: BufferedReader) -> int:
+    def read_int32(reader: BufferedIOBase) -> int:
         return int.from_bytes(reader.read(4), byteorder="little", signed=True)
 
     @staticmethod
-    def read_uint32(reader: BufferedReader) -> int:
+    def read_uint32(reader: BufferedIOBase) -> int:
         return int.from_bytes(reader.read(4), byteorder="little", signed=False)
 
     @staticmethod
-    def read_int16(reader: BufferedReader) -> int:
+    def read_int16(reader: BufferedIOBase) -> int:
         return int.from_bytes(reader.read(2), byteorder="little", signed=True)
 
     @staticmethod
-    def read_uint16(reader: BufferedReader) -> int:
+    def read_uint16(reader: BufferedIOBase) -> int:
         return int.from_bytes(reader.read(2), byteorder="little", signed=False)
 
     @staticmethod
-    def read_int8(reader: BufferedReader) -> int:
+    def read_int8(reader: BufferedIOBase) -> int:
         return int.from_bytes(reader.read(1), byteorder="little", signed=True)
 
     @staticmethod
-    def read_uint8(reader: BufferedReader) -> int:
+    def read_uint8(reader: BufferedIOBase) -> int:
         return int.from_bytes(reader.read(1), byteorder="little", signed=False)
 
     @staticmethod
-    def read_int32_big_endian(reader: BufferedReader) -> int:
+    def read_int32_big_endian(reader: BufferedIOBase) -> int:
         return int.from_bytes(reader.read(4), byteorder="big", signed=True)
 
     @staticmethod
-    def read_int16_big_endian(reader: BufferedReader) -> int:
+    def read_int16_big_endian(reader: BufferedIOBase) -> int:
         return int.from_bytes(reader.read(2), byteorder="big", signed=True)
 
     @staticmethod
-    def read_int_variable_length(reader: BufferedReader) -> int:
+    def read_int_variable_length(reader: BufferedIOBase) -> int:
         acc = 0
         count = 0
 
@@ -61,7 +61,7 @@ class _BinaryReaderEx:
         return acc
 
     @staticmethod
-    def read_four_cc(reader: BufferedReader) -> str:
+    def read_four_cc(reader: BufferedIOBase) -> str:
         data = bytearray(reader.read(4))
 
         for i, value in enumerate(data):
@@ -71,7 +71,7 @@ class _BinaryReaderEx:
         return data.decode("ascii")
 
     @staticmethod
-    def read_fixed_length_string(reader: BufferedReader, length: int) -> str:
+    def read_fixed_length_string(reader: BufferedIOBase, length: int) -> str:
         data = reader.read(length)
 
         actualLength = 0
@@ -84,7 +84,7 @@ class _BinaryReaderEx:
 
     @staticmethod
     def read_int16_array_as_float_array(
-        reader: BufferedReader, size: int
+        reader: BufferedIOBase, size: int
     ) -> Sequence[float]:
         count = int(size / 2)
         data = array("h")
@@ -194,7 +194,7 @@ class SoundFontInfo:
     _comments: str = ""
     _tools: str = ""
 
-    def __init__(self, reader: BufferedReader) -> None:
+    def __init__(self, reader: BufferedIOBase) -> None:
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
@@ -324,7 +324,7 @@ class _SoundFontSampleData:
     _bits_per_sample: int
     _samples: Sequence[float]
 
-    def __init__(self, reader: BufferedReader) -> None:
+    def __init__(self, reader: BufferedIOBase) -> None:
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
@@ -445,12 +445,12 @@ class _Generator:
     _generator_type: _GeneratorType
     _value: int
 
-    def __init__(self, reader: BufferedReader) -> None:
+    def __init__(self, reader: BufferedIOBase) -> None:
         self._generator_type = _GeneratorType(_BinaryReaderEx.read_uint16(reader))
         self._value = _BinaryReaderEx.read_int16(reader)
 
     @staticmethod
-    def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_Generator"]:
+    def read_from_chunk(reader: BufferedIOBase, size: int) -> Sequence["_Generator"]:
         if int(size % 4) != 0:
             raise Exception("The generator list is invalid.")
 
@@ -476,7 +476,7 @@ class _Generator:
 
 class _Modulator:
     @staticmethod
-    def discard_data(reader: BufferedReader, size: int) -> None:
+    def discard_data(reader: BufferedIOBase, size: int) -> None:
         if int(size % 10) != 0:
             raise Exception("The modulator list is invalid.")
 
@@ -507,7 +507,7 @@ class SampleHeader:
     _link: int
     _sample_type: _SampleType
 
-    def __init__(self, reader: BufferedReader) -> None:
+    def __init__(self, reader: BufferedIOBase) -> None:
         self._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
         self._start = _BinaryReaderEx.read_int32(reader)
         self._end = _BinaryReaderEx.read_int32(reader)
@@ -520,7 +520,7 @@ class SampleHeader:
         self._sample_type = _SampleType(_BinaryReaderEx.read_uint16(reader))
 
     @staticmethod
-    def _read_from_chunk(reader: BufferedReader, size: int) -> Sequence["SampleHeader"]:
+    def _read_from_chunk(reader: BufferedIOBase, size: int) -> Sequence["SampleHeader"]:
         if int(size % 46) != 0:
             raise Exception("The sample header list is invalid.")
 
@@ -574,12 +574,12 @@ class _ZoneInfo:
     _generator_count: int
     _modulator_count: int
 
-    def __init__(self, reader: BufferedReader) -> None:
+    def __init__(self, reader: BufferedIOBase) -> None:
         self._generator_index = _BinaryReaderEx.read_uint16(reader)
         self._modulator_index = _BinaryReaderEx.read_uint16(reader)
 
     @staticmethod
-    def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_ZoneInfo"]:
+    def read_from_chunk(reader: BufferedIOBase, size: int) -> Sequence["_ZoneInfo"]:
         if int(size % 4) != 0:
             raise Exception("The zone list is invalid.")
 
@@ -663,7 +663,7 @@ class _PresetInfo:
     _genre: int
     _morphology: int
 
-    def __init__(self, reader: BufferedReader) -> None:
+    def __init__(self, reader: BufferedIOBase) -> None:
         self._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
         self._patch_number = _BinaryReaderEx.read_uint16(reader)
         self._bank_number = _BinaryReaderEx.read_uint16(reader)
@@ -673,7 +673,7 @@ class _PresetInfo:
         self._morphology = _BinaryReaderEx.read_int32(reader)
 
     @staticmethod
-    def read_from_chunk(reader: BufferedReader, size: int) -> Sequence["_PresetInfo"]:
+    def read_from_chunk(reader: BufferedIOBase, size: int) -> Sequence["_PresetInfo"]:
         if int(size % 38) != 0:
             raise Exception("The preset list is invalid.")
 
@@ -726,13 +726,13 @@ class _InstrumentInfo:
     _zone_start_index: int
     _zone_end_index: int
 
-    def __init__(self, reader: BufferedReader) -> None:
+    def __init__(self, reader: BufferedIOBase) -> None:
         self._name = _BinaryReaderEx.read_fixed_length_string(reader, 20)
         self._zone_start_index = _BinaryReaderEx.read_uint16(reader)
 
     @staticmethod
     def read_from_chunk(
-        reader: BufferedReader, size: int
+        reader: BufferedIOBase, size: int
     ) -> Sequence["_InstrumentInfo"]:
         if int(size % 22) != 0:
             raise Exception("The instrument list is invalid.")
@@ -1515,7 +1515,7 @@ class _SoundFontParameters:
     _presets: Sequence[Preset]
     _instruments: Sequence[Instrument]
 
-    def __init__(self, reader: BufferedReader) -> None:
+    def __init__(self, reader: BufferedIOBase) -> None:
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "LIST":
             raise Exception("The LIST chunk was not found.")
@@ -1628,7 +1628,7 @@ class SoundFont:
     _presets: Sequence[Preset]
     _instruments: Sequence[Instrument]
 
-    def __init__(self, reader: BufferedReader) -> None:
+    def __init__(self, reader: BufferedIOBase) -> None:
         chunk_id = _BinaryReaderEx.read_four_cc(reader)
         if chunk_id != "RIFF":
             raise Exception("The RIFF chunk was not found.")
@@ -3627,7 +3627,7 @@ class MidiFile:
     _messages: Sequence[_MidiMessage]
     _times: Sequence[float]
 
-    def __init__(self, reader: BufferedReader) -> None:
+    def __init__(self, reader: BufferedIOBase) -> None:
         chunk_type = _BinaryReaderEx.read_four_cc(reader)
         if chunk_type != "MThd":
             raise Exception(
@@ -3661,7 +3661,7 @@ class MidiFile:
         self._times = times
 
     @staticmethod
-    def _read_track(reader: BufferedReader) -> tuple[list[_MidiMessage], list[int]]:
+    def _read_track(reader: BufferedIOBase) -> tuple[list[_MidiMessage], list[int]]:
         chunk_type = _BinaryReaderEx.read_four_cc(reader)
         if chunk_type != "MTrk":
             raise Exception(
@@ -3786,7 +3786,7 @@ class MidiFile:
         return merged_messages, merged_times
 
     @staticmethod
-    def read_tempo(reader: BufferedReader) -> int:
+    def read_tempo(reader: BufferedIOBase) -> int:
         size = _BinaryReaderEx.read_int_variable_length(reader)
         if size != 3:
             raise Exception("Failed to read the tempo value.")
@@ -3798,7 +3798,7 @@ class MidiFile:
         return (b1 << 16) | (b2 << 8) | b3
 
     @staticmethod
-    def discard_data(reader: BufferedReader) -> None:
+    def discard_data(reader: BufferedIOBase) -> None:
         size = _BinaryReaderEx.read_int_variable_length(reader)
         reader.seek(size, io.SEEK_CUR)
 
