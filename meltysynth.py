@@ -9,6 +9,10 @@ from io import BufferedIOBase
 from typing import Optional
 
 
+def create_buffer(length: int) -> MutableSequence[float]:
+    return array("d", itertools.repeat(0, length))
+
+
 class _BinaryReaderEx:
     @staticmethod
     def read_int32(reader: BufferedIOBase) -> int:
@@ -2802,7 +2806,7 @@ class _Voice:
         self._oscillator = _Oscillator(synthesizer)
         self._filter = _BiQuadFilter(synthesizer)
 
-        self._block = array("d", itertools.repeat(0, synthesizer.block_size))
+        self._block = create_buffer(synthesizer.block_size)
 
         self._current_mix_gain_left = 0
         self._current_mix_gain_right = 0
@@ -3255,8 +3259,8 @@ class Synthesizer:
 
         self._voices = _VoiceCollection(self, self._maximum_polyphony)
 
-        self._block_left = array("d", itertools.repeat(0, self._block_size))
-        self._block_right = array("d", itertools.repeat(0, self._block_size))
+        self._block_left = create_buffer(self._block_size)
+        self._block_right = create_buffer(self._block_size)
 
         self._inverse_block_size = 1.0 / self._block_size
 
@@ -3543,10 +3547,6 @@ class Synthesizer:
     @master_volume.setter
     def master_volume(self, value: float) -> None:
         self._master_volume = value
-
-
-def create_buffer(length: int) -> MutableSequence[float]:
-    return array("d", itertools.repeat(0, length))
 
 
 class _MidiMessageType(IntEnum):
@@ -3843,10 +3843,8 @@ class MidiFileSequencer:
         self._current_time = 0.0
         self._msg_index = 0
 
-        self._block_left = array("d", itertools.repeat(0, self._synthesizer.block_size))
-        self._block_right = array(
-            "d", itertools.repeat(0, self._synthesizer.block_size)
-        )
+        self._block_left = create_buffer(self._synthesizer.block_size)
+        self._block_right = create_buffer(self._synthesizer.block_size)
 
         self._synthesizer.reset()
 
