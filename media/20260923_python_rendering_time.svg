@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="760" viewBox="0 0 1080 760">
+<rect width="1080" height="760" fill="#ffffff"/>
+<g font-family="Segoe UI, Arial, sans-serif" fill="#172b3a">
+<text x="42" y="48" font-size="29" font-weight="700">Py-MeltySynth · Python rendering benchmark</text>
+<text x="42" y="80" font-size="17" fill="#536778">flourish.mid + TimGM6mb.sf2 · 44.1 kHz stereo · 3 fresh-process runs per case</text>
+<text x="42" y="107" font-size="16" fill="#536778">Intel Core i7-12700K · Windows 11 x64 · 2026-09-23</text>
+<rect x="42" y="130" width="17" height="17" rx="3" fill="#206986"/>
+<text x="68" y="144" font-size="15">Standard / JIT OFF</text>
+<rect x="260" y="130" width="17" height="17" rx="3" fill="#df8638"/>
+<text x="286" y="144" font-size="15">JIT ON</text>
+<text x="520" y="144" font-size="15" fill="#536778">Whiskers: min–max · Lower is faster</text>
+<line x1="235.0" y1="164" x2="235.0" y2="614" stroke="#dce5eb"/>
+<text x="235.0" y="641" font-size="15" text-anchor="middle">0</text>
+<line x1="326.25" y1="164" x2="326.25" y2="614" stroke="#dce5eb"/>
+<text x="326.25" y="641" font-size="15" text-anchor="middle">10</text>
+<line x1="417.5" y1="164" x2="417.5" y2="614" stroke="#dce5eb"/>
+<text x="417.5" y="641" font-size="15" text-anchor="middle">20</text>
+<line x1="508.75" y1="164" x2="508.75" y2="614" stroke="#dce5eb"/>
+<text x="508.75" y="641" font-size="15" text-anchor="middle">30</text>
+<line x1="600.0" y1="164" x2="600.0" y2="614" stroke="#dce5eb"/>
+<text x="600.0" y="641" font-size="15" text-anchor="middle">40</text>
+<line x1="691.25" y1="164" x2="691.25" y2="614" stroke="#dce5eb"/>
+<text x="691.25" y="641" font-size="15" text-anchor="middle">50</text>
+<line x1="782.5" y1="164" x2="782.5" y2="614" stroke="#dce5eb"/>
+<text x="782.5" y="641" font-size="15" text-anchor="middle">60</text>
+<line x1="873.75" y1="164" x2="873.75" y2="614" stroke="#dce5eb"/>
+<text x="873.75" y="641" font-size="15" text-anchor="middle">70</text>
+<line x1="965.0" y1="164" x2="965.0" y2="614" stroke="#dce5eb"/>
+<text x="965.0" y="641" font-size="15" text-anchor="middle">80</text>
+<text x="217" y="197" text-anchor="end" font-size="18">3.10.11</text>
+<rect x="235" y="174" width="633.799" height="34" rx="3" fill="#206986"/>
+<path d="M 836.970 191 H 931.732 M 836.970 183 V 199 M 931.732 183 V 199" fill="none" stroke="#172b3a" stroke-width="1.5"/>
+<text x="941.732" y="197" font-size="17" font-weight="600">69.46</text>
+<text x="217" y="252" text-anchor="end" font-size="18">3.11.9</text>
+<rect x="235" y="229" width="510.777" height="34" rx="3" fill="#206986"/>
+<path d="M 737.118 246 H 759.937 M 737.118 238 V 254 M 759.937 238 V 254" fill="none" stroke="#172b3a" stroke-width="1.5"/>
+<text x="769.937" y="252" font-size="17" font-weight="600">55.98</text>
+<text x="217" y="307" text-anchor="end" font-size="18">3.12.10</text>
+<rect x="235" y="284" width="463.869" height="34" rx="3" fill="#206986"/>
+<path d="M 698.555 301 H 699.253 M 698.555 293 V 309 M 699.253 293 V 309" fill="none" stroke="#172b3a" stroke-width="1.5"/>
+<text x="709.253" y="307" font-size="17" font-weight="600">50.83</text>
+<text x="217" y="362" text-anchor="end" font-size="18">3.13.15</text>
+<rect x="235" y="339" width="441.595" height="34" rx="3" fill="#206986"/>
+<path d="M 674.923 356 H 679.135 M 674.923 348 V 364 M 679.135 348 V 364" fill="none" stroke="#172b3a" stroke-width="1.5"/>
+<text x="689.135" y="362" font-size="17" font-weight="600">48.39</text>
+<text x="217" y="417" text-anchor="end" font-size="18">3.14.7 · JIT OFF</text>
+<rect x="235" y="394" width="453.588" height="34" rx="3" fill="#206986"/>
+<path d="M 685.586 411 H 692.797 M 685.586 403 V 419 M 692.797 403 V 419" fill="none" stroke="#172b3a" stroke-width="1.5"/>
+<text x="702.797" y="417" font-size="17" font-weight="600">49.71</text>
+<text x="217" y="472" text-anchor="end" font-size="18">3.14.7 · JIT ON</text>
+<rect x="235" y="449" width="384.209" height="34" rx="3" fill="#df8638"/>
+<path d="M 618.906 466 H 619.614 M 618.906 458 V 474 M 619.614 458 V 474" fill="none" stroke="#172b3a" stroke-width="1.5"/>
+<text x="629.614" y="472" font-size="17" font-weight="600">42.11</text>
+<text x="217" y="527" text-anchor="end" font-size="18">3.15.0rc2 · JIT OFF</text>
+<rect x="235" y="504" width="341.085" height="34" rx="3" fill="#206986"/>
+<path d="M 575.803 521 H 576.548 M 575.803 513 V 529 M 576.548 513 V 529" fill="none" stroke="#172b3a" stroke-width="1.5"/>
+<text x="586.548" y="527" font-size="17" font-weight="600">37.38</text>
+<text x="217" y="582" text-anchor="end" font-size="18">3.15.0rc2 · JIT ON</text>
+<rect x="235" y="559" width="296.386" height="34" rx="3" fill="#df8638"/>
+<path d="M 530.368 576 H 532.349 M 530.368 568 V 584 M 532.349 568 V 584" fill="none" stroke="#172b3a" stroke-width="1.5"/>
+<text x="542.349" y="582" font-size="17" font-weight="600">32.48</text>
+<text x="600" y="671" text-anchor="middle" font-size="17">Rendering time (seconds)</text>
+<text x="42" y="710" font-size="14" fill="#536778">3.10–3.12: last official Windows binary releases. 3.15.0rc2: prerelease.</text>
+<text x="42" y="735" font-size="14" fill="#536778">Render only; setup / file I/O excluded. JIT compilation during render included. No warmup.</text>
+</g></svg>
